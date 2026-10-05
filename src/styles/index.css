@@ -1,0 +1,246 @@
+/* ─────────────────────────────────────────────────────────────
+   react-treecraft — Base Styles
+   All values are CSS variables → override anything from outside
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  --tc-line-color: #94a3b8;
+  --tc-line-width: 2px;
+  --tc-line-radius: 8px;
+  --tc-node-gap: 24px;
+  --tc-level-gap: 32px;
+  --tc-animation-duration: 200ms;
+  --tc-focus-color: #3b82f6;
+  --tc-focus-glow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  --tc-selected-color: #8b5cf6;
+  --tc-collapse-btn-size: 22px;
+  --tc-collapse-btn-bg: #ffffff;
+  --tc-collapse-btn-border: #e2e8f0;
+  --tc-collapse-btn-hover-bg: #f8fafc;
+}
+
+/* ── Root wrapper ───────────────────────────────────────────── */
+.tc-root {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tc-root--horizontal {
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+/* ── Forest (multi-root) ────────────────────────────────────── */
+.tc-forest {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--tc-node-gap);
+  width: 100%;
+  justify-content: center;
+}
+
+/* ── Branch wrapper (one node + its subtree) ────────────────── */
+.tc-branch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.tc-root--horizontal .tc-branch {
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+/* ── Node wrapper ───────────────────────────────────────────── */
+.tc-node-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tc-node-wrapper--focused .tc-node-inner {
+  box-shadow: var(--tc-focus-glow);
+  outline: var(--tc-line-width) solid var(--tc-focus-color);
+  border-radius: 6px;
+}
+
+.tc-node-wrapper--selected .tc-node-inner {
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+  outline: var(--tc-line-width) solid var(--tc-selected-color);
+  border-radius: 6px;
+}
+
+.tc-node-wrapper--on-path > .tc-node-inner {
+  opacity: 1;
+}
+
+.tc-node-wrapper:not(.tc-node-wrapper--on-path).tc-has-focus-path {
+  opacity: 0.45;
+  transition: opacity var(--tc-animation-duration) ease;
+}
+
+.tc-node-inner {
+  cursor: default;
+  transition:
+    box-shadow var(--tc-animation-duration) ease,
+    outline var(--tc-animation-duration) ease;
+}
+
+.tc-node-inner--selectable {
+  cursor: pointer;
+}
+
+/* ── Connector: vertical stem down from node ─────────────────── */
+.tc-stem {
+  width: var(--tc-line-width);
+  background: var(--tc-line-color);
+  flex-shrink: 0;
+}
+
+.tc-stem--top {
+  height: calc(var(--tc-level-gap) / 2);
+}
+
+.tc-stem--bottom {
+  height: calc(var(--tc-level-gap) / 2);
+}
+
+/* ── Collapse toggle button ─────────────────────────────────── */
+.tc-collapse-btn {
+  position: absolute;
+  bottom: calc(var(--tc-collapse-btn-size) / -2);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  width: var(--tc-collapse-btn-size);
+  height: var(--tc-collapse-btn-size);
+  border-radius: 50%;
+  border: var(--tc-line-width) solid var(--tc-collapse-btn-border);
+  background: var(--tc-collapse-btn-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background var(--tc-animation-duration) ease,
+    transform var(--tc-animation-duration) ease,
+    box-shadow var(--tc-animation-duration) ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  outline: none;
+  padding: 0;
+}
+
+.tc-collapse-btn:hover {
+  background: var(--tc-collapse-btn-hover-bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transform: translateX(-50%) scale(1.1);
+}
+
+.tc-collapse-btn:active {
+  transform: translateX(-50%) scale(0.95);
+}
+
+.tc-collapse-btn svg {
+  transition: transform var(--tc-animation-duration) ease;
+  width: 11px;
+  height: 11px;
+  color: #64748b;
+}
+
+.tc-collapse-btn--expanded svg {
+  transform: rotate(180deg);
+}
+
+/* ── Horizontal collapse btn ─────────────────────────────────── */
+.tc-root--horizontal .tc-collapse-btn {
+  bottom: auto;
+  right: calc(var(--tc-collapse-btn-size) / -2);
+  left: auto;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.tc-root--horizontal .tc-collapse-btn:hover {
+  transform: translateY(-50%) scale(1.1);
+}
+
+/* ── Children row ───────────────────────────────────────────── */
+.tc-children-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--tc-node-gap);
+  position: relative;
+}
+
+.tc-root--horizontal .tc-children-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--tc-node-gap);
+}
+
+/* ── Horizontal connector bar (the crossbar above siblings) ──── */
+.tc-h-bar {
+  position: absolute;
+  top: 0;
+  height: var(--tc-line-width);
+  background: var(--tc-line-color);
+}
+
+/* Per-child vertical drop-down from the crossbar */
+.tc-child-stem {
+  width: var(--tc-line-width);
+  height: calc(var(--tc-level-gap) / 2);
+  background: var(--tc-line-color);
+  flex-shrink: 0;
+}
+
+/* Single-child: just a straight line, no crossbar needed */
+.tc-single-child .tc-child-stem {
+  height: var(--tc-level-gap);
+}
+
+/* ── Highlighted path lines ─────────────────────────────────── */
+.tc-stem--highlighted,
+.tc-child-stem--highlighted,
+.tc-h-bar--highlighted {
+  background: var(--tc-focus-color);
+  transition: background var(--tc-animation-duration) ease;
+}
+
+/* ── Animations ─────────────────────────────────────────────── */
+
+/* fade */
+.tc-anim-fade-enter {
+  animation: tc-fade-in var(--tc-animation-duration) ease forwards;
+}
+@keyframes tc-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* slide (from top) */
+.tc-anim-slide-enter {
+  animation: tc-slide-in var(--tc-animation-duration) ease forwards;
+}
+@keyframes tc-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* zoom */
+.tc-anim-zoom-enter {
+  animation: tc-zoom-in var(--tc-animation-duration) ease forwards;
+}
+@keyframes tc-zoom-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
