@@ -11,7 +11,7 @@
   --tc-level-gap: 32px;
   --tc-animation-duration: 200ms;
   --tc-focus-color: #3b82f6;
-  --tc-focus-glow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  --tc-focus-glow: 0 0 0 3px rgba(59, 130, 246, 0.25);
   --tc-selected-color: #8b5cf6;
   --tc-collapse-btn-size: 22px;
   --tc-collapse-btn-bg: #ffffff;
@@ -19,19 +19,53 @@
   --tc-collapse-btn-hover-bg: #f8fafc;
 }
 
-/* ── Root wrapper ───────────────────────────────────────────── */
+/* ── Root scroll container ──────────────────────────────────── */
 .tc-root {
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
   align-items: center;
-  overflow: auto;
+  justify-content: flex-start;
   width: 100%;
   box-sizing: border-box;
+  overflow: auto;
+  position: relative;
 }
 
 .tc-root--horizontal {
+  align-items: center;
+  justify-content: flex-start;
+}
+
+/* ── Canvas wrapper (centers tree horizontally & vertically) ── */
+.tc-canvas {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 100%;
+  width: max-content;
+  box-sizing: border-box;
+  padding: 24px;
+  margin: 0 auto;
+}
+
+.tc-root--horizontal .tc-canvas {
   flex-direction: row;
-  align-items: flex-start;
+  min-height: 100%;
+  height: max-content;
+}
+
+.tc-tree-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.tc-root--horizontal .tc-tree-wrapper {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ── Forest (multi-root) ────────────────────────────────────── */
@@ -40,21 +74,193 @@
   flex-direction: row;
   align-items: flex-start;
   gap: var(--tc-node-gap);
-  width: 100%;
   justify-content: center;
 }
 
-/* ── Branch wrapper (one node + its subtree) ────────────────── */
-.tc-branch {
+.tc-root--horizontal .tc-forest {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* ── Vertical Branch ────────────────────────────────────────── */
+.tc-branch--vertical {
   display: flex;
   flex-direction: column;
   align-items: center;
   position: relative;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
 }
 
-.tc-root--horizontal .tc-branch {
+.tc-branch--vertical > .tc-node-wrapper {
+  margin: 0 calc(var(--tc-node-gap) / 2);
+}
+
+/* Subtree wrapper in vertical mode */
+.tc-subtree--vertical {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+/* Children row in vertical mode */
+.tc-children-row--vertical {
+  display: flex;
   flex-direction: row;
   align-items: flex-start;
+  justify-content: center;
+  position: relative;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+}
+
+/* Vertical top connector for each child */
+.tc-connector-v {
+  position: relative;
+  width: 100%;
+  height: calc(var(--tc-level-gap) / 2);
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Sibling crossbar horizontal segment above each child */
+.tc-connector-v .tc-crossbar-segment-v {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--tc-line-width);
+  background: var(--tc-line-color);
+}
+
+/* First child in multi-child group: crossbar goes from center (50%) to right (100%) */
+.tc-connector-v.tc-connector--first:not(.tc-connector--single) .tc-crossbar-segment-v {
+  left: 50%;
+  right: 0;
+}
+
+/* Last child in multi-child group: crossbar goes from left (0%) to center (50%) */
+.tc-connector-v.tc-connector--last:not(.tc-connector--single) .tc-crossbar-segment-v {
+  left: 0;
+  right: 50%;
+}
+
+/* Single child: no crossbar */
+.tc-connector-v.tc-connector--single .tc-crossbar-segment-v {
+  display: none;
+}
+
+/* Vertical stem dropping from crossbar to node card */
+.tc-connector-v .tc-stem-down {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: var(--tc-line-width);
+  transform: translateX(-50%);
+  background: var(--tc-line-color);
+}
+
+/* Parent bottom stem down to the children row crossbar */
+.tc-stem-parent-down {
+  width: var(--tc-line-width);
+  height: calc(var(--tc-level-gap) / 2);
+  background: var(--tc-line-color);
+  flex-shrink: 0;
+}
+
+/* ── Horizontal Branch ──────────────────────────────────────── */
+.tc-branch--horizontal {
+  display: flex;
+  flex-direction: row;
+  align-items: center; /* Vertically centers the parent on the Y-axis */
+  position: relative;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.tc-branch--horizontal > .tc-node-wrapper {
+  margin: calc(var(--tc-node-gap) / 2) 0;
+}
+
+/* Subtree wrapper in horizontal mode */
+.tc-subtree--horizontal {
+  display: flex;
+  flex-direction: row;
+  align-items: center; /* Keeps children column vertically centered */
+}
+
+/* Children column in horizontal mode */
+.tc-children-row--horizontal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  position: relative;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+}
+
+/* Horizontal left connector for each child */
+.tc-connector-h {
+  position: relative;
+  align-self: stretch; /* Spans full height of this child's branch */
+  width: calc(var(--tc-level-gap) / 2);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Vertical crossbar segment for siblings in horizontal mode */
+.tc-connector-h .tc-crossbar-segment-h {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--tc-line-width);
+  background: var(--tc-line-color);
+}
+
+/* First child in multi-child column: vertical crossbar goes from center (50%) to bottom (100%) */
+.tc-connector-h.tc-connector--first:not(.tc-connector--single) .tc-crossbar-segment-h {
+  top: 50%;
+  bottom: 0;
+}
+
+/* Last child in multi-child column: vertical crossbar goes from top (0%) to center (50%) */
+.tc-connector-h.tc-connector--last:not(.tc-connector--single) .tc-crossbar-segment-h {
+  top: 0;
+  bottom: 50%;
+}
+
+/* Single child: no vertical crossbar */
+.tc-connector-h.tc-connector--single .tc-crossbar-segment-h {
+  display: none;
+}
+
+/* Horizontal stem going right from vertical crossbar to node card */
+.tc-connector-h .tc-stem-right {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: var(--tc-line-width);
+  transform: translateY(-50%);
+  background: var(--tc-line-color);
+}
+
+/* Parent right stem extending rightwards from parent card to children crossbar */
+.tc-stem-parent-right {
+  height: var(--tc-line-width);
+  width: calc(var(--tc-level-gap) / 2);
+  background: var(--tc-line-color);
+  flex-shrink: 0;
 }
 
 /* ── Node wrapper ───────────────────────────────────────────── */
@@ -63,18 +269,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .tc-node-wrapper--focused .tc-node-inner {
   box-shadow: var(--tc-focus-glow);
   outline: var(--tc-line-width) solid var(--tc-focus-color);
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .tc-node-wrapper--selected .tc-node-inner {
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
   outline: var(--tc-line-width) solid var(--tc-selected-color);
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .tc-node-wrapper--on-path > .tc-node-inner {
@@ -82,7 +289,7 @@
 }
 
 .tc-node-wrapper:not(.tc-node-wrapper--on-path).tc-has-focus-path {
-  opacity: 0.45;
+  opacity: 0.4;
   transition: opacity var(--tc-animation-duration) ease;
 }
 
@@ -95,21 +302,6 @@
 
 .tc-node-inner--selectable {
   cursor: pointer;
-}
-
-/* ── Connector: vertical stem down from node ─────────────────── */
-.tc-stem {
-  width: var(--tc-line-width);
-  background: var(--tc-line-color);
-  flex-shrink: 0;
-}
-
-.tc-stem--top {
-  height: calc(var(--tc-level-gap) / 2);
-}
-
-.tc-stem--bottom {
-  height: calc(var(--tc-level-gap) / 2);
 }
 
 /* ── Collapse toggle button ─────────────────────────────────── */
@@ -132,15 +324,15 @@
     background var(--tc-animation-duration) ease,
     transform var(--tc-animation-duration) ease,
     box-shadow var(--tc-animation-duration) ease;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
   outline: none;
   padding: 0;
 }
 
 .tc-collapse-btn:hover {
   background: var(--tc-collapse-btn-hover-bg);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  transform: translateX(-50%) scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  transform: translateX(-50%) scale(1.12);
 }
 
 .tc-collapse-btn:active {
@@ -168,52 +360,27 @@
 }
 
 .tc-root--horizontal .tc-collapse-btn:hover {
-  transform: translateY(-50%) scale(1.1);
+  transform: translateY(-50%) scale(1.12);
 }
 
-/* ── Children row ───────────────────────────────────────────── */
-.tc-children-row {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  justify-content: center;
-  gap: var(--tc-node-gap);
-  position: relative;
+.tc-root--horizontal .tc-collapse-btn svg {
+  transform: rotate(-90deg);
 }
 
-.tc-root--horizontal .tc-children-row {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--tc-node-gap);
-}
-
-/* ── Horizontal connector bar (the crossbar above siblings) ──── */
-.tc-h-bar {
-  position: absolute;
-  top: 0;
-  height: var(--tc-line-width);
-  background: var(--tc-line-color);
-}
-
-/* Per-child vertical drop-down from the crossbar */
-.tc-child-stem {
-  width: var(--tc-line-width);
-  height: calc(var(--tc-level-gap) / 2);
-  background: var(--tc-line-color);
-  flex-shrink: 0;
-}
-
-/* Single-child: just a straight line, no crossbar needed */
-.tc-single-child .tc-child-stem {
-  height: var(--tc-level-gap);
+.tc-root--horizontal .tc-collapse-btn--expanded-h svg {
+  transform: rotate(90deg);
 }
 
 /* ── Highlighted path lines ─────────────────────────────────── */
-.tc-stem--highlighted,
-.tc-child-stem--highlighted,
-.tc-h-bar--highlighted {
-  background: var(--tc-focus-color);
-  transition: background var(--tc-animation-duration) ease;
+.tc-connector--highlighted .tc-stem-down,
+.tc-connector--highlighted .tc-stem-right,
+.tc-connector--highlighted .tc-crossbar-segment-v,
+.tc-connector--highlighted .tc-crossbar-segment-h,
+.tc-stem-parent-down.tc-stem--highlighted,
+.tc-stem-parent-right.tc-stem--highlighted {
+  background: var(--tc-focus-color) !important;
+  box-shadow: 0 0 6px var(--tc-focus-color);
+  transition: background var(--tc-animation-duration) ease, box-shadow var(--tc-animation-duration) ease;
 }
 
 /* ── Animations ─────────────────────────────────────────────── */

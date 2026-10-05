@@ -129,7 +129,11 @@ export function TreeCraft<T = Record<string, unknown>>({
   ].filter(Boolean).join(' ');
 
   const innerStyle: React.CSSProperties = zoomable
-    ? { transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`, transformOrigin: '0 0', cursor: isPanning.current ? 'grabbing' : 'grab' }
+    ? {
+        transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+        transformOrigin: 'center center',
+        cursor: isPanning.current ? 'grabbing' : 'grab',
+      }
     : {};
 
   return (
@@ -143,8 +147,8 @@ export function TreeCraft<T = Record<string, unknown>>({
       onMouseUp={zoomable ? handleMouseUp : undefined}
       onMouseLeave={zoomable ? handleMouseUp : undefined}
     >
-      <div style={innerStyle}>
-        <div className={annotatedNodes.length > 1 ? 'tc-forest' : ''}>
+      <div className="tc-canvas" style={innerStyle}>
+        <div className={annotatedNodes.length > 1 ? 'tc-forest' : 'tc-tree-wrapper'}>
           {annotatedNodes.map((node) => (
             <TreeBranch
               key={node.id}

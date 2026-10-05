@@ -2,21 +2,32 @@
   "name": "react-treecraft",
   "version": "0.1.0",
   "description": "A headless, minimal, and highly customizable tree structure builder for React. Zero assumptions. Full control.",
-  "author": "FlowX",
+  "author": "Selahadin Hamid",
   "license": "MIT",
-  "keywords": ["react", "tree", "hierarchy", "structure", "org-chart", "treecraft", "node", "headless"],
+  "keywords": [
+    "react",
+    "tree",
+    "hierarchy",
+    "structure",
+    "org-chart",
+    "treecraft",
+    "node",
+    "headless"
+  ],
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
     },
     "./styles": "./dist/index.css"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "build:watch": "tsup --watch",
