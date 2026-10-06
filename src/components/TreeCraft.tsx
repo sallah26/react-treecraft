@@ -32,6 +32,7 @@ export function TreeCraft<T = Record<string, unknown>>({
   // features
   readOnly = false,
   selectable = false,
+  selectPath = false,
   onSelect,
   onNodeClick,
   focusedNodeId,
@@ -63,6 +64,11 @@ export function TreeCraft<T = Record<string, unknown>>({
 
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(initCollapsedIds);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [internalFocusedId, setInternalFocusedId] = useState<string | undefined>();
+  const [internalHighlightPath, setInternalHighlightPath] = useState<string | undefined>();
+
+  const activeFocusedId = focusedNodeId !== undefined ? focusedNodeId : internalFocusedId;
+  const activeHighlightPath = highlightPath !== undefined ? highlightPath : internalHighlightPath;
 
   const toggleCollapse = useCallback((id: string) => {
     setCollapsedIds((prev) => {
@@ -72,22 +78,43 @@ export function TreeCraft<T = Record<string, unknown>>({
     });
   }, []);
 
-  const toggleSelect = useCallback((id: string) => {
+  const toggleSelect = useCallback((id: string, path: string[]) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      const isSelected = next.has(id);
+      if (selectPath) {
+        if (isSelected) {
+          // Deselect the node and its entire ancestor chain
+          path.forEach((ancestorId) => next.delete(ancestorId));
+          setInternalHighlightPath(undefined);
+          setInternalFocusedId(undefined);
+        } else {
+          // Select this specific path (clear old path)
+          next.clear();
+          path.forEach((ancestorId) => next.add(ancestorId));
+          setInternalHighlightPath(id);
+          setInternalFocusedId(id);
+        }
+      } else {
+        // Individual node toggle
+        if (isSelected) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+      }
       onSelect?.([...next]);
       return next;
     });
-  }, [onSelect]);
+  }, [selectPath, onSelect]);
 
   // ── Highlighted path ──────────────────────────────────────
   const highlightPathIds = useMemo<Set<string> | undefined>(() => {
-    if (!highlightPath) return undefined;
+    if (!activeHighlightPath) return undefined;
     const arr = toArray(data);
-    const chain = getPath(arr, highlightPath);
+    const chain = getPath(arr, activeHighlightPath);
     return chain ? new Set(chain.map((n) => n.id)) : undefined;
-  }, [highlightPath, data]);
+  }, [activeHighlightPath, data]);
 
   // ── Zoom / Pan ────────────────────────────────────────────
   const [scale, setScale] = useState(1);
@@ -160,10 +187,11 @@ export function TreeCraft<T = Record<string, unknown>>({
               node={node}
               collapsedIds={collapsedIds}
               selectedIds={selectedIds}
-              focusedNodeId={focusedNodeId}
+              focusedNodeId={activeFocusedId}
               highlightPathIds={highlightPathIds}
               collapsible={collapsible}
               selectable={selectable}
+              selectPath={selectPath}
               readOnly={readOnly}
               orientation={orientation}
               animationPreset={animationPreset}
@@ -184,7 +212,7 @@ export function TreeCraft<T = Record<string, unknown>>({
         <MiniMap
           data={data}
           containerRef={containerRef}
-          focusedNodeId={focusedNodeId}
+          focusedNodeId={activeFocusedId}
           selectedIds={selectedIds}
           position={miniMapPosition}
         />

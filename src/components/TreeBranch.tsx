@@ -14,6 +14,7 @@ interface TreeBranchProps<T> {
   highlightPathIds?: Set<string>;
   collapsible: boolean;
   selectable: boolean;
+  selectPath?: boolean;
   readOnly: boolean;
   orientation: 'vertical' | 'horizontal';
   animationPreset: 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip' | 'blur' | 'none';
@@ -26,7 +27,7 @@ interface TreeBranchProps<T> {
   onSelect?: TreeCraftProps<T>['onSelect'];
   onNodeClick?: TreeCraftProps<T>['onNodeClick'];
   onToggleCollapse: (id: string) => void;
-  onToggleSelect: (id: string) => void;
+  onToggleSelect: (id: string, path: string[]) => void;
 }
 
 export function TreeBranch<T>({
@@ -37,6 +38,7 @@ export function TreeBranch<T>({
   highlightPathIds,
   collapsible,
   selectable,
+  selectPath = false,
   readOnly,
   orientation,
   animationPreset,
@@ -79,11 +81,12 @@ export function TreeBranch<T>({
     onCollapseChange?.(node.id, !isCollapsed);
   };
 
+  const isClickSelectable = (selectable || selectPath) && !readOnly;
+
   const handleNodeClick = () => {
     if (readOnly) return;
-    if (selectable) {
-      onToggleSelect(node.id);
-      onSelect?.([...selectedIds, node.id]);
+    if (selectable || selectPath) {
+      onToggleSelect(node.id, node._path);
     }
     onNodeClick?.(node as any);
   };
@@ -128,7 +131,7 @@ export function TreeBranch<T>({
         {/* Node card */}
         <div className={nodeWrapperClasses}>
           <div
-            className={`tc-node-inner ${selectable && !readOnly ? 'tc-node-inner--selectable' : ''}`}
+            className={`tc-node-inner ${isClickSelectable ? 'tc-node-inner--selectable' : ''}`}
             onClick={handleNodeClick}
           >
             {renderedNodeContent}
@@ -157,6 +160,7 @@ export function TreeBranch<T>({
                   highlightPathIds={highlightPathIds}
                   collapsible={collapsible}
                   selectable={selectable}
+                  selectPath={selectPath}
                   readOnly={readOnly}
                   orientation={orientation}
                   animationPreset={animationPreset}
@@ -183,7 +187,7 @@ export function TreeBranch<T>({
       {/* Node card */}
       <div className={nodeWrapperClasses}>
         <div
-          className={`tc-node-inner ${selectable && !readOnly ? 'tc-node-inner--selectable' : ''}`}
+          className={`tc-node-inner ${isClickSelectable ? 'tc-node-inner--selectable' : ''}`}
           onClick={handleNodeClick}
         >
           {renderedNodeContent}
@@ -212,6 +216,7 @@ export function TreeBranch<T>({
                 highlightPathIds={highlightPathIds}
                 collapsible={collapsible}
                 selectable={selectable}
+                selectPath={selectPath}
                 readOnly={readOnly}
                 orientation={orientation}
                 animationPreset={animationPreset}

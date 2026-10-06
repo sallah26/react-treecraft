@@ -188,14 +188,15 @@ export default function App() {
   const [orientation, setOrientation] = useState<Orientation>('vertical');
   const [animPreset, setAnimPreset] = useState<AnimPreset>('fade');
   const [animDuration, setAnimDuration] = useState<AnimDuration>('200');
-  const [selectable, setSelectable] = useState(false);
+  const [selectPath, setSelectPath] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showMiniMap, setShowMiniMap] = useState(false);
   const [zoomable, setZoomable] = useState(false);
   const [readOnly, setReadOnly] = useState(false);
   const [focusedId, setFocusedId] = useState<string | undefined>();
   const [highlightPath, setHighlightPath] = useState<string | undefined>();
 
-  const selectedCount = tree.selectedIds.size;
+  const selectedCount = selectedIds.length;
 
   const handleSearch = (id: string) => {
     setFocusedId(id);
@@ -246,10 +247,21 @@ export default function App() {
           />
 
           <button
-            className={`btn ${selectable ? 'btn--active' : ''}`}
-            onClick={() => setSelectable((s) => !s)}
+            className={`btn ${selectPath ? 'btn--active' : ''}`}
+            onClick={() => {
+              setSelectPath((s) => {
+                const next = !s;
+                if (!next) {
+                  setFocusedId(undefined);
+                  setHighlightPath(undefined);
+                  setSelectedIds([]);
+                  tree.clearSelection();
+                }
+                return next;
+              });
+            }}
           >
-            {selectable ? '✓ Selectable' : 'Selectable'}
+            {selectPath ? '✓ Path Selection' : 'Path Selection'}
           </button>
 
           <button
@@ -280,7 +292,7 @@ export default function App() {
           {focusedId && (
             <button
               className="btn btn--danger"
-              onClick={() => { setFocusedId(undefined); setHighlightPath(undefined); }}
+              onClick={() => { setFocusedId(undefined); setHighlightPath(undefined); setSelectedIds([]); }}
             >
               Clear Focus
             </button>
@@ -295,7 +307,18 @@ export default function App() {
             {selectedCount > 0 && (
               <span className="info-bar__item">
                 Selected: <strong>{selectedCount}</strong>
-                <button className="btn btn--danger" style={{ marginLeft: 8, padding: '2px 8px', fontSize: 11 }} onClick={tree.clearSelection}>✕</button>
+                <button
+                  className="btn btn--danger"
+                  style={{ marginLeft: 8, padding: '2px 8px', fontSize: 11 }}
+                  onClick={() => {
+                    setSelectedIds([]);
+                    setFocusedId(undefined);
+                    setHighlightPath(undefined);
+                    tree.clearSelection();
+                  }}
+                >
+                  ✕
+                </button>
               </span>
             )}
             {focusedId && (
@@ -313,19 +336,16 @@ export default function App() {
               animationDuration={Number(animDuration)}
               collapsible
               defaultCollapsed={false}
-              selectable={selectable}
+              selectPath={selectPath}
               readOnly={readOnly}
               focusedNodeId={focusedId}
               highlightPath={highlightPath}
               miniMap={showMiniMap}
               miniMapPosition="bottom-right"
               zoomable={zoomable}
-              onSelect={(ids) => console.log('Selected:', ids)}
+              onSelect={(ids) => setSelectedIds(ids)}
               onCollapseChange={(id, collapsed) => console.log('Collapse:', id, collapsed)}
-              onNodeClick={(node) => {
-                setFocusedId(node.id);
-                setHighlightPath(node.id);
-              }}
+              onNodeClick={(node) => console.log('Node clicked:', node.id)}
               renderNode={({ node, isRoot, isLeaf, isSelected, isFocused }) => (
                 <OrgNodeCard
                   name={(node.data as OrgNode).name}

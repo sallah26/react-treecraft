@@ -109,10 +109,16 @@ interface TreeCraftProps<T = Record<string, unknown>> {
      */
     orientation?: Orientation;
     /**
-     * Allow nodes to be clicked to select them.
+     * Allow nodes to be clicked to select them individually.
      * @default false
      */
     selectable?: boolean;
+    /**
+     * Path selection mode: clicking a node selects/deselects its entire
+     * ancestor path (from the root node down to the clicked node).
+     * @default false
+     */
+    selectPath?: boolean;
     /**
      * Allow selecting multiple nodes with Shift+Click.
      * @default false
@@ -196,7 +202,7 @@ interface UseTreeCraftReturn<T = Record<string, unknown>> {
     setData: (data: TreeNode<T> | TreeNode<T>[]) => void;
 }
 
-declare function TreeCraft<T = Record<string, unknown>>({ data, renderNode, collapsible, defaultCollapsed, collapseDepth, renderCollapseButton, onCollapseChange, orientation, animationPreset, animationDuration, className, style, readOnly, selectable, onSelect, onNodeClick, focusedNodeId, highlightPath, maxDepth, miniMap, miniMapPosition, zoomable, }: TreeCraftProps<T>): React.JSX.Element;
+declare function TreeCraft<T = Record<string, unknown>>({ data, renderNode, collapsible, defaultCollapsed, collapseDepth, renderCollapseButton, onCollapseChange, orientation, animationPreset, animationDuration, className, style, readOnly, selectable, selectPath, onSelect, onNodeClick, focusedNodeId, highlightPath, maxDepth, miniMap, miniMapPosition, zoomable, }: TreeCraftProps<T>): React.JSX.Element;
 
 interface TreeSearchProps<T> {
     /** Pass the same `data` you gave to <TreeCraft> */

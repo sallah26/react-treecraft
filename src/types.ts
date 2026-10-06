@@ -143,10 +143,16 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
 
   // ── Selection ─────────────────────────────────────────────
   /**
-   * Allow nodes to be clicked to select them.
+   * Allow nodes to be clicked to select them individually.
    * @default false
    */
   selectable?: boolean;
+  /**
+   * Path selection mode: clicking a node selects/deselects its entire
+   * ancestor path (from the root node down to the clicked node).
+   * @default false
+   */
+  selectPath?: boolean;
   /**
    * Allow selecting multiple nodes with Shift+Click.
    * @default false

@@ -220,6 +220,7 @@ function TreeBranch({
   highlightPathIds,
   collapsible,
   selectable,
+  selectPath = false,
   readOnly,
   orientation,
   animationPreset,
@@ -253,11 +254,11 @@ function TreeBranch({
     onToggleCollapse(node.id);
     onCollapseChange?.(node.id, !isCollapsed);
   };
+  const isClickSelectable = (selectable || selectPath) && !readOnly;
   const handleNodeClick = () => {
     if (readOnly) return;
-    if (selectable) {
-      onToggleSelect(node.id);
-      onSelect?.([...selectedIds, node.id]);
+    if (selectable || selectPath) {
+      onToggleSelect(node.id, node._path);
     }
     onNodeClick?.(node);
   };
@@ -294,7 +295,7 @@ function TreeBranch({
         /* @__PURE__ */ jsxRuntime.jsx(
           "div",
           {
-            className: `tc-node-inner ${selectable && !readOnly ? "tc-node-inner--selectable" : ""}`,
+            className: `tc-node-inner ${isClickSelectable ? "tc-node-inner--selectable" : ""}`,
             onClick: handleNodeClick,
             children: renderedNodeContent
           }
@@ -322,6 +323,7 @@ function TreeBranch({
             highlightPathIds,
             collapsible,
             selectable,
+            selectPath,
             readOnly,
             orientation,
             animationPreset,
@@ -344,7 +346,7 @@ function TreeBranch({
       /* @__PURE__ */ jsxRuntime.jsx(
         "div",
         {
-          className: `tc-node-inner ${selectable && !readOnly ? "tc-node-inner--selectable" : ""}`,
+          className: `tc-node-inner ${isClickSelectable ? "tc-node-inner--selectable" : ""}`,
           onClick: handleNodeClick,
           children: renderedNodeContent
         }
@@ -372,6 +374,7 @@ function TreeBranch({
           highlightPathIds,
           collapsible,
           selectable,
+          selectPath,
           readOnly,
           orientation,
           animationPreset,
@@ -578,6 +581,7 @@ function TreeCraft({
   // features
   readOnly = false,
   selectable = false,
+  selectPath = false,
   onSelect,
   onNodeClick,
   focusedNodeId,
@@ -609,6 +613,10 @@ function TreeCraft({
   }, []);
   const [collapsedIds, setCollapsedIds] = react.useState(initCollapsedIds);
   const [selectedIds, setSelectedIds] = react.useState(/* @__PURE__ */ new Set());
+  const [internalFocusedId, setInternalFocusedId] = react.useState();
+  const [internalHighlightPath, setInternalHighlightPath] = react.useState();
+  const activeFocusedId = focusedNodeId !== void 0 ? focusedNodeId : internalFocusedId;
+  const activeHighlightPath = highlightPath !== void 0 ? highlightPath : internalHighlightPath;
   const toggleCollapse = react.useCallback((id) => {
     setCollapsedIds((prev) => {
       const next = new Set(prev);
@@ -617,21 +625,38 @@ function TreeCraft({
       return next;
     });
   }, []);
-  const toggleSelect = react.useCallback((id) => {
+  const toggleSelect = react.useCallback((id, path) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      const isSelected = next.has(id);
+      if (selectPath) {
+        if (isSelected) {
+          path.forEach((ancestorId) => next.delete(ancestorId));
+          setInternalHighlightPath(void 0);
+          setInternalFocusedId(void 0);
+        } else {
+          next.clear();
+          path.forEach((ancestorId) => next.add(ancestorId));
+          setInternalHighlightPath(id);
+          setInternalFocusedId(id);
+        }
+      } else {
+        if (isSelected) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+      }
       onSelect?.([...next]);
       return next;
     });
-  }, [onSelect]);
+  }, [selectPath, onSelect]);
   const highlightPathIds = react.useMemo(() => {
-    if (!highlightPath) return void 0;
+    if (!activeHighlightPath) return void 0;
     const arr = toArray(data);
-    const chain = getPath(arr, highlightPath);
+    const chain = getPath(arr, activeHighlightPath);
     return chain ? new Set(chain.map((n) => n.id)) : void 0;
-  }, [highlightPath, data]);
+  }, [activeHighlightPath, data]);
   const [scale, setScale] = react.useState(1);
   const [translate, setTranslate] = react.useState({ x: 0, y: 0 });
   const isPanning = react.useRef(false);
@@ -689,10 +714,11 @@ function TreeCraft({
             node,
             collapsedIds,
             selectedIds,
-            focusedNodeId,
+            focusedNodeId: activeFocusedId,
             highlightPathIds,
             collapsible,
             selectable,
+            selectPath,
             readOnly,
             orientation,
             animationPreset,
@@ -712,7 +738,7 @@ function TreeCraft({
           {
             data,
             containerRef,
-            focusedNodeId,
+            focusedNodeId: activeFocusedId,
             selectedIds,
             position: miniMapPosition
           }
