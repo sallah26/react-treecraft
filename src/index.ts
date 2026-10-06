@@ -9,6 +9,7 @@ export { TreeCraft } from './components/TreeCraft';
 export { TreeSearch } from './components/TreeSearch';
 export { MiniMap } from './components/MiniMap';
 export { DefaultCollapseBtn } from './components/DefaultCollapseBtn';
+export { TreeConnector } from './components/TreeConnector';
 
 // State management hook
 export { useTreeCraft } from './hooks/useTreeCraft';

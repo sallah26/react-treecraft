@@ -2,7 +2,7 @@
 
 var react = require('react');
 var jsxRuntime = require('react/jsx-runtime');
-require('./index-62PKXS7E.css');
+require('./index-GOVUULLW.css');
 
 // src/components/TreeCraft.tsx
 function DefaultCollapseBtn({ isCollapsed, onClick, orientation = "vertical" }) {
@@ -29,6 +29,189 @@ function DefaultCollapseBtn({ isCollapsed, onClick, orientation = "vertical" }) 
     }
   );
 }
+function TreeConnector({
+  orientation,
+  childrenRowRef,
+  childrenNodes,
+  highlightPathIds
+}) {
+  const containerRef = react.useRef(null);
+  const [layout, setLayout] = react.useState({ parentCoord: 0, childCoords: [], width: 0, height: 0 });
+  const measure = react.useCallback(() => {
+    const row = childrenRowRef.current;
+    const container = containerRef.current;
+    if (!row || !container) return;
+    const childElements = Array.from(row.children);
+    if (childElements.length === 0) return;
+    const width2 = container.offsetWidth || row.offsetWidth;
+    const height2 = container.offsetHeight || 32;
+    if (orientation === "vertical") {
+      const parentCoord2 = row.offsetWidth / 2;
+      const childCoords2 = childElements.map((el) => el.offsetLeft + el.offsetWidth / 2);
+      setLayout({ parentCoord: parentCoord2, childCoords: childCoords2, width: width2, height: height2 });
+    } else {
+      const parentCoord2 = row.offsetHeight / 2;
+      const childCoords2 = childElements.map((el) => el.offsetTop + el.offsetHeight / 2);
+      setLayout({ parentCoord: parentCoord2, childCoords: childCoords2, width: width2, height: height2 });
+    }
+  }, [orientation, childrenRowRef]);
+  react.useLayoutEffect(() => {
+    measure();
+    const row = childrenRowRef.current;
+    const container = containerRef.current;
+    if (!row || !container) return;
+    const ro = new ResizeObserver(() => {
+      measure();
+    });
+    ro.observe(row);
+    ro.observe(container);
+    Array.from(row.children).forEach((child) => ro.observe(child));
+    return () => ro.disconnect();
+  }, [measure, childrenNodes.length]);
+  const { parentCoord, childCoords, width, height } = layout;
+  if (childCoords.length === 0 || width === 0 || height === 0) {
+    return /* @__PURE__ */ jsxRuntime.jsx(
+      "div",
+      {
+        ref: containerRef,
+        className: `tc-connector-zone tc-connector-zone--${orientation}`,
+        "aria-hidden": "true"
+      }
+    );
+  }
+  if (orientation === "vertical") {
+    const minX = childCoords[0];
+    const maxX = childCoords[childCoords.length - 1];
+    const midY = height / 2;
+    let basePath2 = "";
+    if (childCoords.length === 1) {
+      basePath2 = `M ${parentCoord} 0 L ${childCoords[0]} ${height}`;
+    } else {
+      const stemsDown = childCoords.map((x) => `M ${x} ${midY} L ${x} ${height}`).join(" ");
+      basePath2 = `M ${parentCoord} 0 L ${parentCoord} ${midY} M ${minX} ${midY} L ${maxX} ${midY} ${stemsDown}`;
+    }
+    const activeIndices2 = childrenNodes.map((child, idx) => highlightPathIds?.has(child.id) ? idx : -1).filter((idx) => idx !== -1);
+    const highlightedPaths2 = activeIndices2.map((idx) => {
+      const targetX = childCoords[idx];
+      if (targetX === void 0) return "";
+      if (childCoords.length === 1) {
+        return `M ${parentCoord} 0 L ${targetX} ${height}`;
+      }
+      return `M ${parentCoord} 0 L ${parentCoord} ${midY} L ${targetX} ${midY} L ${targetX} ${height}`;
+    }).filter(Boolean);
+    return /* @__PURE__ */ jsxRuntime.jsx(
+      "div",
+      {
+        ref: containerRef,
+        className: "tc-connector-zone tc-connector-zone--vertical",
+        "aria-hidden": "true",
+        children: /* @__PURE__ */ jsxRuntime.jsxs(
+          "svg",
+          {
+            className: "tc-connector-svg",
+            style: {
+              width: "100%",
+              height: "100%",
+              position: "absolute",
+              top: 0,
+              left: 0,
+              overflow: "visible",
+              pointerEvents: "none"
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntime.jsx(
+                "path",
+                {
+                  d: basePath2,
+                  className: "tc-line tc-line--base",
+                  fill: "none",
+                  strokeLinecap: "round",
+                  strokeLinejoin: "round"
+                }
+              ),
+              highlightedPaths2.map((d, i) => /* @__PURE__ */ jsxRuntime.jsx(
+                "path",
+                {
+                  d,
+                  className: "tc-line tc-line--highlighted",
+                  fill: "none",
+                  strokeLinecap: "round",
+                  strokeLinejoin: "round"
+                },
+                i
+              ))
+            ]
+          }
+        )
+      }
+    );
+  }
+  const minY = childCoords[0];
+  const maxY = childCoords[childCoords.length - 1];
+  const midX = width / 2;
+  let basePath = "";
+  if (childCoords.length === 1) {
+    basePath = `M 0 ${parentCoord} L ${width} ${childCoords[0]}`;
+  } else {
+    const stemsRight = childCoords.map((y) => `M ${midX} ${y} L ${width} ${y}`).join(" ");
+    basePath = `M 0 ${parentCoord} L ${midX} ${parentCoord} M ${midX} ${minY} L ${midX} ${maxY} ${stemsRight}`;
+  }
+  const activeIndices = childrenNodes.map((child, idx) => highlightPathIds?.has(child.id) ? idx : -1).filter((idx) => idx !== -1);
+  const highlightedPaths = activeIndices.map((idx) => {
+    const targetY = childCoords[idx];
+    if (targetY === void 0) return "";
+    if (childCoords.length === 1) {
+      return `M 0 ${parentCoord} L ${width} ${targetY}`;
+    }
+    return `M 0 ${parentCoord} L ${midX} ${parentCoord} L ${midX} ${targetY} L ${width} ${targetY}`;
+  }).filter(Boolean);
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "div",
+    {
+      ref: containerRef,
+      className: "tc-connector-zone tc-connector-zone--horizontal",
+      "aria-hidden": "true",
+      children: /* @__PURE__ */ jsxRuntime.jsxs(
+        "svg",
+        {
+          className: "tc-connector-svg",
+          style: {
+            width: "100%",
+            height: "100%",
+            position: "absolute",
+            top: 0,
+            left: 0,
+            overflow: "visible",
+            pointerEvents: "none"
+          },
+          children: [
+            /* @__PURE__ */ jsxRuntime.jsx(
+              "path",
+              {
+                d: basePath,
+                className: "tc-line tc-line--base",
+                fill: "none",
+                strokeLinecap: "round",
+                strokeLinejoin: "round"
+              }
+            ),
+            highlightedPaths.map((d, i) => /* @__PURE__ */ jsxRuntime.jsx(
+              "path",
+              {
+                d,
+                className: "tc-line tc-line--highlighted",
+                fill: "none",
+                strokeLinecap: "round",
+                strokeLinejoin: "round"
+              },
+              i
+            ))
+          ]
+        }
+      )
+    }
+  );
+}
 function TreeBranch({
   node,
   collapsedIds,
@@ -47,10 +230,7 @@ function TreeBranch({
   onSelect,
   onNodeClick,
   onToggleCollapse,
-  onToggleSelect,
-  isFirst = false,
-  isLast = false,
-  siblingCount = 1
+  onToggleSelect
 }) {
   const isCollapsed = collapsedIds.has(node.id);
   const isSelected = selectedIds.has(node.id);
@@ -61,6 +241,7 @@ function TreeBranch({
   const depthLimited = maxDepth !== void 0 && node._depth >= maxDepth;
   const showChildren = hasChildren && !isCollapsed && !depthLimited;
   const showCollapseBtn = collapsible && hasChildren && !depthLimited && !readOnly;
+  const childrenRowRef = react.useRef(null);
   const children = node.children ?? [];
   const animClass = animationPreset !== "none" ? `tc-anim-${animationPreset}-enter` : "";
   const handleCollapseClick = (e) => {
@@ -105,18 +286,7 @@ function TreeBranch({
     toggleCollapse: () => onToggleCollapse(node.id)
   });
   if (orientation === "horizontal") {
-    const connectorClasses2 = [
-      "tc-connector-h",
-      siblingCount === 1 ? "tc-connector--single" : "",
-      isFirst ? "tc-connector--first" : "",
-      isLast ? "tc-connector--last" : "",
-      isOnPath ? "tc-connector--highlighted" : ""
-    ].filter(Boolean).join(" ");
     return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "tc-branch tc-branch--horizontal", children: [
-      !node._isRoot && /* @__PURE__ */ jsxRuntime.jsxs("div", { className: connectorClasses2, children: [
-        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "tc-crossbar-segment-h" }),
-        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "tc-stem-right" })
-      ] }),
       /* @__PURE__ */ jsxRuntime.jsxs("div", { className: nodeWrapperClasses, children: [
         /* @__PURE__ */ jsxRuntime.jsx(
           "div",
@@ -129,8 +299,16 @@ function TreeBranch({
         collapseBtn
       ] }),
       showChildren && /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "tc-subtree tc-subtree--horizontal", children: [
-        /* @__PURE__ */ jsxRuntime.jsx("div", { className: `tc-stem-parent-right ${isOnPath ? "tc-stem--highlighted" : ""}` }),
-        /* @__PURE__ */ jsxRuntime.jsx("div", { className: `tc-children-row tc-children-row--horizontal ${animClass}`, children: children.map((child, i) => /* @__PURE__ */ jsxRuntime.jsx(
+        /* @__PURE__ */ jsxRuntime.jsx(
+          TreeConnector,
+          {
+            orientation,
+            childrenRowRef,
+            childrenNodes: children,
+            highlightPathIds
+          }
+        ),
+        /* @__PURE__ */ jsxRuntime.jsx("div", { className: `tc-children-row tc-children-row--horizontal ${animClass}`, ref: childrenRowRef, children: children.map((child) => /* @__PURE__ */ jsxRuntime.jsx(
           TreeBranch,
           {
             node: child,
@@ -150,28 +328,14 @@ function TreeBranch({
             onSelect,
             onNodeClick,
             onToggleCollapse,
-            onToggleSelect,
-            isFirst: i === 0,
-            isLast: i === children.length - 1,
-            siblingCount: children.length
+            onToggleSelect
           },
           child.id
         )) })
       ] })
     ] });
   }
-  const connectorClasses = [
-    "tc-connector-v",
-    siblingCount === 1 ? "tc-connector--single" : "",
-    isFirst ? "tc-connector--first" : "",
-    isLast ? "tc-connector--last" : "",
-    isOnPath ? "tc-connector--highlighted" : ""
-  ].filter(Boolean).join(" ");
   return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "tc-branch tc-branch--vertical", children: [
-    !node._isRoot && /* @__PURE__ */ jsxRuntime.jsxs("div", { className: connectorClasses, children: [
-      /* @__PURE__ */ jsxRuntime.jsx("div", { className: "tc-crossbar-segment-v" }),
-      /* @__PURE__ */ jsxRuntime.jsx("div", { className: "tc-stem-down" })
-    ] }),
     /* @__PURE__ */ jsxRuntime.jsxs("div", { className: nodeWrapperClasses, children: [
       /* @__PURE__ */ jsxRuntime.jsx(
         "div",
@@ -184,8 +348,16 @@ function TreeBranch({
       collapseBtn
     ] }),
     showChildren && /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "tc-subtree tc-subtree--vertical", children: [
-      /* @__PURE__ */ jsxRuntime.jsx("div", { className: `tc-stem-parent-down ${isOnPath ? "tc-stem--highlighted" : ""}` }),
-      /* @__PURE__ */ jsxRuntime.jsx("div", { className: `tc-children-row tc-children-row--vertical ${animClass}`, children: children.map((child, i) => /* @__PURE__ */ jsxRuntime.jsx(
+      /* @__PURE__ */ jsxRuntime.jsx(
+        TreeConnector,
+        {
+          orientation,
+          childrenRowRef,
+          childrenNodes: children,
+          highlightPathIds
+        }
+      ),
+      /* @__PURE__ */ jsxRuntime.jsx("div", { className: `tc-children-row tc-children-row--vertical ${animClass}`, ref: childrenRowRef, children: children.map((child) => /* @__PURE__ */ jsxRuntime.jsx(
         TreeBranch,
         {
           node: child,
@@ -205,10 +377,7 @@ function TreeBranch({
           onSelect,
           onNodeClick,
           onToggleCollapse,
-          onToggleSelect,
-          isFirst: i === 0,
-          isLast: i === children.length - 1,
-          siblingCount: children.length
+          onToggleSelect
         },
         child.id
       )) })
@@ -757,6 +926,7 @@ function useTreeCraft(options) {
 
 exports.DefaultCollapseBtn = DefaultCollapseBtn;
 exports.MiniMap = MiniMap;
+exports.TreeConnector = TreeConnector;
 exports.TreeCraft = TreeCraft;
 exports.TreeSearch = TreeSearch;
 exports.addChildNode = addChildNode;

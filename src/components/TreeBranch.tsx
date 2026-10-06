@@ -1,9 +1,10 @@
 // ─────────────────────────────────────────────────────────────
 //  TreeBranch — renders one node + its subtree recursively
 // ─────────────────────────────────────────────────────────────
-import React from 'react';
+import React, { useRef } from 'react';
 import type { InternalNode, TreeCraftProps } from '../types';
 import { DefaultCollapseBtn } from './DefaultCollapseBtn';
+import { TreeConnector } from './TreeConnector';
 
 interface TreeBranchProps<T> {
   node: InternalNode<T>;
@@ -24,9 +25,6 @@ interface TreeBranchProps<T> {
   onNodeClick?: TreeCraftProps<T>['onNodeClick'];
   onToggleCollapse: (id: string) => void;
   onToggleSelect: (id: string) => void;
-  isFirst?: boolean;
-  isLast?: boolean;
-  siblingCount?: number;
 }
 
 export function TreeBranch<T>({
@@ -48,9 +46,6 @@ export function TreeBranch<T>({
   onNodeClick,
   onToggleCollapse,
   onToggleSelect,
-  isFirst = false,
-  isLast = false,
-  siblingCount = 1,
 }: TreeBranchProps<T>) {
   const isCollapsed = collapsedIds.has(node.id);
   const isSelected = selectedIds.has(node.id);
@@ -62,6 +57,7 @@ export function TreeBranch<T>({
   const showChildren = hasChildren && !isCollapsed && !depthLimited;
   const showCollapseBtn = collapsible && hasChildren && !depthLimited && !readOnly;
 
+  const childrenRowRef = useRef<HTMLDivElement>(null);
   const children = (node.children ?? []) as InternalNode<T>[];
   const animClass = animationPreset !== 'none' ? `tc-anim-${animationPreset}-enter` : '';
 
@@ -116,24 +112,8 @@ export function TreeBranch<T>({
 
   // ── Horizontal Layout ─────────────────────────────────────────
   if (orientation === 'horizontal') {
-    const connectorClasses = [
-      'tc-connector-h',
-      siblingCount === 1 ? 'tc-connector--single' : '',
-      isFirst ? 'tc-connector--first' : '',
-      isLast ? 'tc-connector--last' : '',
-      isOnPath ? 'tc-connector--highlighted' : '',
-    ].filter(Boolean).join(' ');
-
     return (
       <div className="tc-branch tc-branch--horizontal">
-        {/* Left incoming connector from parent crossbar */}
-        {!node._isRoot && (
-          <div className={connectorClasses}>
-            <div className="tc-crossbar-segment-h" />
-            <div className="tc-stem-right" />
-          </div>
-        )}
-
         {/* Node card */}
         <div className={nodeWrapperClasses}>
           <div
@@ -145,12 +125,17 @@ export function TreeBranch<T>({
           {collapseBtn}
         </div>
 
-        {/* Subtree (outgoing right stem + children column) */}
+        {/* Subtree (connector zone + children column) */}
         {showChildren && (
           <div className="tc-subtree tc-subtree--horizontal">
-            <div className={`tc-stem-parent-right ${isOnPath ? 'tc-stem--highlighted' : ''}`} />
-            <div className={`tc-children-row tc-children-row--horizontal ${animClass}`}>
-              {children.map((child, i) => (
+            <TreeConnector
+              orientation={orientation}
+              childrenRowRef={childrenRowRef}
+              childrenNodes={children}
+              highlightPathIds={highlightPathIds}
+            />
+            <div className={`tc-children-row tc-children-row--horizontal ${animClass}`} ref={childrenRowRef}>
+              {children.map((child) => (
                 <TreeBranch
                   key={child.id}
                   node={child}
@@ -171,9 +156,6 @@ export function TreeBranch<T>({
                   onNodeClick={onNodeClick}
                   onToggleCollapse={onToggleCollapse}
                   onToggleSelect={onToggleSelect}
-                  isFirst={i === 0}
-                  isLast={i === children.length - 1}
-                  siblingCount={children.length}
                 />
               ))}
             </div>
@@ -184,24 +166,8 @@ export function TreeBranch<T>({
   }
 
   // ── Vertical (default) Layout ─────────────────────────────────
-  const connectorClasses = [
-    'tc-connector-v',
-    siblingCount === 1 ? 'tc-connector--single' : '',
-    isFirst ? 'tc-connector--first' : '',
-    isLast ? 'tc-connector--last' : '',
-    isOnPath ? 'tc-connector--highlighted' : '',
-  ].filter(Boolean).join(' ');
-
   return (
     <div className="tc-branch tc-branch--vertical">
-      {/* Top incoming connector from parent crossbar */}
-      {!node._isRoot && (
-        <div className={connectorClasses}>
-          <div className="tc-crossbar-segment-v" />
-          <div className="tc-stem-down" />
-        </div>
-      )}
-
       {/* Node card */}
       <div className={nodeWrapperClasses}>
         <div
@@ -213,12 +179,17 @@ export function TreeBranch<T>({
         {collapseBtn}
       </div>
 
-      {/* Subtree (outgoing bottom stem + children row) */}
+      {/* Subtree (connector zone + children row) */}
       {showChildren && (
         <div className="tc-subtree tc-subtree--vertical">
-          <div className={`tc-stem-parent-down ${isOnPath ? 'tc-stem--highlighted' : ''}`} />
-          <div className={`tc-children-row tc-children-row--vertical ${animClass}`}>
-            {children.map((child, i) => (
+          <TreeConnector
+            orientation={orientation}
+            childrenRowRef={childrenRowRef}
+            childrenNodes={children}
+            highlightPathIds={highlightPathIds}
+          />
+          <div className={`tc-children-row tc-children-row--vertical ${animClass}`} ref={childrenRowRef}>
+            {children.map((child) => (
               <TreeBranch
                 key={child.id}
                 node={child}
@@ -239,9 +210,6 @@ export function TreeBranch<T>({
                 onNodeClick={onNodeClick}
                 onToggleCollapse={onToggleCollapse}
                 onToggleSelect={onToggleSelect}
-                isFirst={i === 0}
-                isLast={i === children.length - 1}
-                siblingCount={children.length}
               />
             ))}
           </div>

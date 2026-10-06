@@ -220,6 +220,14 @@ interface Props {
 }
 declare function DefaultCollapseBtn({ isCollapsed, onClick, orientation }: Props): React.JSX.Element;
 
+interface TreeConnectorProps<T> {
+    orientation: 'vertical' | 'horizontal';
+    childrenRowRef: React.RefObject<HTMLDivElement>;
+    childrenNodes: InternalNode<T>[];
+    highlightPathIds?: Set<string>;
+}
+declare function TreeConnector<T>({ orientation, childrenRowRef, childrenNodes, highlightPathIds, }: TreeConnectorProps<T>): React.JSX.Element;
+
 declare function useTreeCraft<T = Record<string, unknown>>(options: UseTreeCraftOptions<T>): UseTreeCraftReturn<T>;
 
 /** Generate a collision-resistant id */
@@ -255,4 +263,4 @@ declare function buildTree<T extends {
     parentId: string | null;
 }>): TreeNode<T>[];
 
-export { DefaultCollapseBtn, type InternalNode, MiniMap, type RenderCollapseBtnProps, type RenderNodeProps, TreeCraft, type TreeCraftProps, type TreeNode, TreeSearch, type UseTreeCraftOptions, type UseTreeCraftReturn, addChildNode, annotate, buildTree, collectAllIds, collectDescendantIds, findNode, flattenTree, generateId, getPath, moveNode, removeNode, toArray, updateNodeData, useTreeCraft };
+export { DefaultCollapseBtn, type InternalNode, MiniMap, type RenderCollapseBtnProps, type RenderNodeProps, TreeConnector, TreeCraft, type TreeCraftProps, type TreeNode, TreeSearch, type UseTreeCraftOptions, type UseTreeCraftReturn, addChildNode, annotate, buildTree, collectAllIds, collectDescendantIds, findNode, flattenTree, generateId, getPath, moveNode, removeNode, toArray, updateNodeData, useTreeCraft };

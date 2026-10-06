@@ -8,7 +8,7 @@
   --tc-line-width: 2px;
   --tc-line-radius: 8px;
   --tc-node-gap: 24px;
-  --tc-level-gap: 32px;
+  --tc-level-gap: 36px;
   --tc-animation-duration: 200ms;
   --tc-focus-color: #3b82f6;
   --tc-focus-glow: 0 0 0 3px rgba(59, 130, 246, 0.25);
@@ -93,10 +93,6 @@
   padding: 0;
 }
 
-.tc-branch--vertical > .tc-node-wrapper {
-  margin: 0 calc(var(--tc-node-gap) / 2);
-}
-
 /* Subtree wrapper in vertical mode */
 .tc-subtree--vertical {
   display: flex;
@@ -112,64 +108,18 @@
   align-items: flex-start;
   justify-content: center;
   position: relative;
-  gap: 0;
+  gap: var(--tc-node-gap);
   margin: 0;
   padding: 0;
 }
 
-/* Vertical top connector for each child */
-.tc-connector-v {
-  position: relative;
+/* Vertical connector zone */
+.tc-connector-zone--vertical {
   width: 100%;
-  height: calc(var(--tc-level-gap) / 2);
+  height: var(--tc-level-gap);
+  position: relative;
   display: flex;
   justify-content: center;
-  flex-shrink: 0;
-}
-
-/* Sibling crossbar horizontal segment above each child */
-.tc-connector-v .tc-crossbar-segment-v {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: var(--tc-line-width);
-  background: var(--tc-line-color);
-}
-
-/* First child in multi-child group: crossbar goes from center (50%) to right (100%) */
-.tc-connector-v.tc-connector--first:not(.tc-connector--single) .tc-crossbar-segment-v {
-  left: 50%;
-  right: 0;
-}
-
-/* Last child in multi-child group: crossbar goes from left (0%) to center (50%) */
-.tc-connector-v.tc-connector--last:not(.tc-connector--single) .tc-crossbar-segment-v {
-  left: 0;
-  right: 50%;
-}
-
-/* Single child: no crossbar */
-.tc-connector-v.tc-connector--single .tc-crossbar-segment-v {
-  display: none;
-}
-
-/* Vertical stem dropping from crossbar to node card */
-.tc-connector-v .tc-stem-down {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: var(--tc-line-width);
-  transform: translateX(-50%);
-  background: var(--tc-line-color);
-}
-
-/* Parent bottom stem down to the children row crossbar */
-.tc-stem-parent-down {
-  width: var(--tc-line-width);
-  height: calc(var(--tc-level-gap) / 2);
-  background: var(--tc-line-color);
   flex-shrink: 0;
 }
 
@@ -177,15 +127,11 @@
 .tc-branch--horizontal {
   display: flex;
   flex-direction: row;
-  align-items: center; /* Vertically centers the parent on the Y-axis */
+  align-items: center; /* Vertically centers parent on the Y-axis */
   position: relative;
   flex-shrink: 0;
   margin: 0;
   padding: 0;
-}
-
-.tc-branch--horizontal > .tc-node-wrapper {
-  margin: calc(var(--tc-node-gap) / 2) 0;
 }
 
 /* Subtree wrapper in horizontal mode */
@@ -193,6 +139,7 @@
   display: flex;
   flex-direction: row;
   align-items: center; /* Keeps children column vertically centered */
+  height: 100%;
 }
 
 /* Children column in horizontal mode */
@@ -202,65 +149,37 @@
   align-items: flex-start;
   justify-content: center;
   position: relative;
-  gap: 0;
+  gap: var(--tc-node-gap);
   margin: 0;
   padding: 0;
 }
 
-/* Horizontal left connector for each child */
-.tc-connector-h {
+/* Horizontal connector zone */
+.tc-connector-zone--horizontal {
+  width: var(--tc-level-gap);
+  align-self: stretch;
   position: relative;
-  align-self: stretch; /* Spans full height of this child's branch */
-  width: calc(var(--tc-level-gap) / 2);
   display: flex;
   align-items: center;
   flex-shrink: 0;
 }
 
-/* Vertical crossbar segment for siblings in horizontal mode */
-.tc-connector-h .tc-crossbar-segment-h {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: var(--tc-line-width);
-  background: var(--tc-line-color);
+/* ── SVG Connector Lines ────────────────────────────────────── */
+.tc-connector-svg {
+  pointer-events: none;
 }
 
-/* First child in multi-child column: vertical crossbar goes from center (50%) to bottom (100%) */
-.tc-connector-h.tc-connector--first:not(.tc-connector--single) .tc-crossbar-segment-h {
-  top: 50%;
-  bottom: 0;
+.tc-line--base {
+  stroke: var(--tc-line-color);
+  stroke-width: var(--tc-line-width);
+  transition: stroke var(--tc-animation-duration) ease;
 }
 
-/* Last child in multi-child column: vertical crossbar goes from top (0%) to center (50%) */
-.tc-connector-h.tc-connector--last:not(.tc-connector--single) .tc-crossbar-segment-h {
-  top: 0;
-  bottom: 50%;
-}
-
-/* Single child: no vertical crossbar */
-.tc-connector-h.tc-connector--single .tc-crossbar-segment-h {
-  display: none;
-}
-
-/* Horizontal stem going right from vertical crossbar to node card */
-.tc-connector-h .tc-stem-right {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: var(--tc-line-width);
-  transform: translateY(-50%);
-  background: var(--tc-line-color);
-}
-
-/* Parent right stem extending rightwards from parent card to children crossbar */
-.tc-stem-parent-right {
-  height: var(--tc-line-width);
-  width: calc(var(--tc-level-gap) / 2);
-  background: var(--tc-line-color);
-  flex-shrink: 0;
+.tc-line--highlighted {
+  stroke: var(--tc-focus-color);
+  stroke-width: calc(var(--tc-line-width) + 0.5px);
+  filter: drop-shadow(0 0 4px var(--tc-focus-color));
+  transition: stroke var(--tc-animation-duration) ease, filter var(--tc-animation-duration) ease;
 }
 
 /* ── Node wrapper ───────────────────────────────────────────── */
@@ -289,7 +208,7 @@
 }
 
 .tc-node-wrapper:not(.tc-node-wrapper--on-path).tc-has-focus-path {
-  opacity: 0.4;
+  opacity: 0.35;
   transition: opacity var(--tc-animation-duration) ease;
 }
 
@@ -369,18 +288,6 @@
 
 .tc-root--horizontal .tc-collapse-btn--expanded-h svg {
   transform: rotate(90deg);
-}
-
-/* ── Highlighted path lines ─────────────────────────────────── */
-.tc-connector--highlighted .tc-stem-down,
-.tc-connector--highlighted .tc-stem-right,
-.tc-connector--highlighted .tc-crossbar-segment-v,
-.tc-connector--highlighted .tc-crossbar-segment-h,
-.tc-stem-parent-down.tc-stem--highlighted,
-.tc-stem-parent-right.tc-stem--highlighted {
-  background: var(--tc-focus-color) !important;
-  box-shadow: 0 0 6px var(--tc-focus-color);
-  transition: background var(--tc-animation-duration) ease, box-shadow var(--tc-animation-duration) ease;
 }
 
 /* ── Animations ─────────────────────────────────────────────── */
