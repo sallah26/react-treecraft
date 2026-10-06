@@ -26,6 +26,7 @@ export function TreeCraft<T = Record<string, unknown>>({
   // styling
   orientation = 'vertical',
   animationPreset = 'fade',
+  animationDuration,
   className = '',
   style,
   // features
@@ -136,11 +137,15 @@ export function TreeCraft<T = Record<string, unknown>>({
       }
     : {};
 
+  const durationStyle = animationDuration !== undefined
+    ? { '--tc-animation-duration': `${animationDuration}ms` } as React.CSSProperties
+    : {};
+
   return (
     <div
       ref={containerRef}
       className={rootClasses}
-      style={{ position: 'relative', overflow: zoomable ? 'hidden' : 'auto', ...style }}
+      style={{ position: 'relative', overflow: zoomable ? 'hidden' : 'auto', ...durationStyle, ...style }}
       onWheel={zoomable ? handleWheel : undefined}
       onMouseDown={zoomable ? handleMouseDown : undefined}
       onMouseMove={zoomable ? handleMouseMove : undefined}

@@ -16,8 +16,10 @@ interface TreeBranchProps<T> {
   selectable: boolean;
   readOnly: boolean;
   orientation: 'vertical' | 'horizontal';
-  animationPreset: 'fade' | 'slide' | 'zoom' | 'none';
+  animationPreset: 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip' | 'blur' | 'none';
   maxDepth?: number;
+  /** Index among siblings — used to stagger the entry animation. Undefined for root nodes. */
+  childIndex?: number;
   renderNode: TreeCraftProps<T>['renderNode'];
   renderCollapseButton?: TreeCraftProps<T>['renderCollapseButton'];
   onCollapseChange?: TreeCraftProps<T>['onCollapseChange'];
@@ -39,6 +41,7 @@ export function TreeBranch<T>({
   orientation,
   animationPreset,
   maxDepth,
+  childIndex,
   renderNode,
   renderCollapseButton,
   onCollapseChange,
@@ -59,7 +62,15 @@ export function TreeBranch<T>({
 
   const childrenRowRef = useRef<HTMLDivElement>(null);
   const children = (node.children ?? []) as InternalNode<T>[];
-  const animClass = animationPreset !== 'none' ? `tc-anim-${animationPreset}-enter` : '';
+
+  // Stagger: each child animates 60ms after the previous one
+  const STAGGER_MS = 60;
+  const animClass = childIndex !== undefined && animationPreset !== 'none'
+    ? `tc-anim-${animationPreset}-enter`
+    : '';
+  const animStyle: React.CSSProperties = animClass
+    ? { animationDelay: `${childIndex! * STAGGER_MS}ms`, animationFillMode: 'both' }
+    : {};
 
   const handleCollapseClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -113,7 +124,7 @@ export function TreeBranch<T>({
   // ── Horizontal Layout ─────────────────────────────────────────
   if (orientation === 'horizontal') {
     return (
-      <div className="tc-branch tc-branch--horizontal">
+      <div className={`tc-branch tc-branch--horizontal ${animClass}`} style={animStyle}>
         {/* Node card */}
         <div className={nodeWrapperClasses}>
           <div
@@ -134,11 +145,12 @@ export function TreeBranch<T>({
               childrenNodes={children}
               highlightPathIds={highlightPathIds}
             />
-            <div className={`tc-children-row tc-children-row--horizontal ${animClass}`} ref={childrenRowRef}>
-              {children.map((child) => (
+            <div className="tc-children-row tc-children-row--horizontal" ref={childrenRowRef}>
+              {children.map((child, idx) => (
                 <TreeBranch
                   key={child.id}
                   node={child}
+                  childIndex={idx}
                   collapsedIds={collapsedIds}
                   selectedIds={selectedIds}
                   focusedNodeId={focusedNodeId}
@@ -167,7 +179,7 @@ export function TreeBranch<T>({
 
   // ── Vertical (default) Layout ─────────────────────────────────
   return (
-    <div className="tc-branch tc-branch--vertical">
+    <div className={`tc-branch tc-branch--vertical ${animClass}`} style={animStyle}>
       {/* Node card */}
       <div className={nodeWrapperClasses}>
         <div
@@ -188,11 +200,12 @@ export function TreeBranch<T>({
             childrenNodes={children}
             highlightPathIds={highlightPathIds}
           />
-          <div className={`tc-children-row tc-children-row--vertical ${animClass}`} ref={childrenRowRef}>
-            {children.map((child) => (
+          <div className="tc-children-row tc-children-row--vertical" ref={childrenRowRef}>
+            {children.map((child, idx) => (
               <TreeBranch
                 key={child.id}
                 node={child}
+                childIndex={idx}
                 collapsedIds={collapsedIds}
                 selectedIds={selectedIds}
                 focusedNodeId={focusedNodeId}

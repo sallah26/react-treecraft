@@ -72,7 +72,7 @@ export interface TreeCraftTheme {
 
 // ── 4. Animation ────────────────────────────────────────────────────────────
 
-export type AnimationPreset = 'fade' | 'slide' | 'zoom' | 'none';
+export type AnimationPreset = 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip' | 'blur' | 'none';
 
 // ── 5. Orientation ─────────────────────────────────────────────────────────
 
@@ -127,6 +127,12 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
    * @default 'fade'
    */
   animationPreset?: AnimationPreset;
+  /**
+   * Duration of expand/collapse animations in milliseconds.
+   * Overrides the --tc-animation-duration CSS variable.
+   * @default 200
+   */
+  animationDuration?: number;
 
   // ── Orientation ───────────────────────────────────────────
   /**

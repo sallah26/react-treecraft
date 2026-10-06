@@ -1,6 +1,77 @@
-import React, { useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { TreeCraft, TreeSearch, useTreeCraft } from 'react-treecraft';
 import type { TreeNode } from 'react-treecraft';
+
+// ── Custom Dropdown ───────────────────────────────────────────
+interface DropdownOption<T extends string> {
+  value: T;
+  label: string;
+  description?: string;
+}
+
+function StyledDropdown<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: DropdownOption<T>[];
+  onChange: (v: T) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = options.find((o) => o.value === value);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div className="dropdown" ref={ref}>
+      <button
+        className={`btn dropdown__trigger ${open ? 'btn--active' : ''}`}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="dropdown__label">{label}:</span>
+        <span className="dropdown__value">{selected?.label ?? value}</span>
+        <svg
+          className={`dropdown__chevron ${open ? 'dropdown__chevron--open' : ''}`}
+          width="10" height="10" viewBox="0 0 10 10" fill="none"
+        >
+          <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {open && (
+        <div className="dropdown__menu">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              className={`dropdown__item ${opt.value === value ? 'dropdown__item--active' : ''}`}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+            >
+              <span className="dropdown__item-label">{opt.label}</span>
+              {opt.description && (
+                <span className="dropdown__item-desc">{opt.description}</span>
+              )}
+              {opt.value === value && (
+                <svg className="dropdown__item-check" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Sample Data ───────────────────────────────────────────────
 interface OrgNode {
@@ -89,14 +160,34 @@ function OrgNodeCard({
 }
 
 // ── App ───────────────────────────────────────────────────────
-type AnimPreset = 'fade' | 'slide' | 'zoom' | 'none';
+type AnimPreset = 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip' | 'blur' | 'none';
 type Orientation = 'vertical' | 'horizontal';
+type AnimDuration = '100' | '200' | '400' | '600' | '1000';
+
+const ANIM_OPTIONS: DropdownOption<AnimPreset>[] = [
+  { value: 'fade',   label: 'Fade',   description: 'Opacity in/out' },
+  { value: 'slide',  label: 'Slide',  description: 'Drop from above' },
+  { value: 'zoom',   label: 'Zoom',   description: 'Scale in/out' },
+  { value: 'bounce', label: 'Bounce', description: 'Spring overshoot' },
+  { value: 'flip',   label: 'Flip',   description: '3D Y-axis rotate' },
+  { value: 'blur',   label: 'Blur',   description: 'Blur + fade in' },
+  { value: 'none',   label: 'None',   description: 'No animation' },
+];
+
+const DURATION_OPTIONS: DropdownOption<AnimDuration>[] = [
+  { value: '100',  label: 'Fast',   description: '100ms' },
+  { value: '200',  label: 'Normal', description: '200ms' },
+  { value: '400',  label: 'Slow',   description: '400ms' },
+  { value: '600',  label: 'Slower', description: '600ms' },
+  { value: '1000', label: 'Glacial',description: '1000ms' },
+];
 
 export default function App() {
   const tree = useTreeCraft<OrgNode>({ initialData: INITIAL_DATA });
 
   const [orientation, setOrientation] = useState<Orientation>('vertical');
   const [animPreset, setAnimPreset] = useState<AnimPreset>('fade');
+  const [animDuration, setAnimDuration] = useState<AnimDuration>('200');
   const [selectable, setSelectable] = useState(false);
   const [showMiniMap, setShowMiniMap] = useState(false);
   const [zoomable, setZoomable] = useState(false);
@@ -140,16 +231,19 @@ export default function App() {
             {orientation === 'vertical' ? '↔ Horizontal' : '↕ Vertical'}
           </button>
 
-          <select
-            className="btn"
+          <StyledDropdown<AnimPreset>
+            label="Anim"
             value={animPreset}
-            onChange={(e) => setAnimPreset(e.target.value as AnimPreset)}
-          >
-            <option value="fade">Anim: Fade</option>
-            <option value="slide">Anim: Slide</option>
-            <option value="zoom">Anim: Zoom</option>
-            <option value="none">Anim: None</option>
-          </select>
+            options={ANIM_OPTIONS}
+            onChange={setAnimPreset}
+          />
+
+          <StyledDropdown<AnimDuration>
+            label="Duration"
+            value={animDuration}
+            options={DURATION_OPTIONS}
+            onChange={setAnimDuration}
+          />
 
           <button
             className={`btn ${selectable ? 'btn--active' : ''}`}
@@ -208,7 +302,7 @@ export default function App() {
               <span className="info-bar__item">Focused: <strong>{focusedId}</strong></span>
             )}
             <span className="info-bar__item">Orientation: <strong>{orientation}</strong></span>
-            <span className="info-bar__item">Animation: <strong>{animPreset}</strong></span>
+            <span className="info-bar__item">Animation: <strong>{animPreset}</strong> @ <strong>{animDuration}ms</strong></span>
           </div>
 
           <div className="tree-container" style={{ height: zoomable ? '70vh' : 'auto' }}>
@@ -216,6 +310,7 @@ export default function App() {
               data={tree.data}
               orientation={orientation}
               animationPreset={animPreset}
+              animationDuration={Number(animDuration)}
               collapsible
               defaultCollapsed={false}
               selectable={selectable}
@@ -248,3 +343,5 @@ export default function App() {
     </div>
   );
 }
+
+

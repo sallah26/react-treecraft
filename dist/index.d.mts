@@ -55,7 +55,7 @@ interface TreeCraftTheme {
     /** Animation duration in ms. Default: 200 */
     animationDuration?: number;
 }
-type AnimationPreset = 'fade' | 'slide' | 'zoom' | 'none';
+type AnimationPreset = 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip' | 'blur' | 'none';
 type Orientation = 'vertical' | 'horizontal';
 interface TreeCraftProps<T = Record<string, unknown>> {
     /** The root node of the tree (or an array of root nodes for a forest) */
@@ -97,6 +97,12 @@ interface TreeCraftProps<T = Record<string, unknown>> {
      * @default 'fade'
      */
     animationPreset?: AnimationPreset;
+    /**
+     * Duration of expand/collapse animations in milliseconds.
+     * Overrides the --tc-animation-duration CSS variable.
+     * @default 200
+     */
+    animationDuration?: number;
     /**
      * Tree layout direction.
      * @default 'vertical'
@@ -190,7 +196,7 @@ interface UseTreeCraftReturn<T = Record<string, unknown>> {
     setData: (data: TreeNode<T> | TreeNode<T>[]) => void;
 }
 
-declare function TreeCraft<T = Record<string, unknown>>({ data, renderNode, collapsible, defaultCollapsed, collapseDepth, renderCollapseButton, onCollapseChange, orientation, animationPreset, className, style, readOnly, selectable, onSelect, onNodeClick, focusedNodeId, highlightPath, maxDepth, miniMap, miniMapPosition, zoomable, }: TreeCraftProps<T>): React.JSX.Element;
+declare function TreeCraft<T = Record<string, unknown>>({ data, renderNode, collapsible, defaultCollapsed, collapseDepth, renderCollapseButton, onCollapseChange, orientation, animationPreset, animationDuration, className, style, readOnly, selectable, onSelect, onNodeClick, focusedNodeId, highlightPath, maxDepth, miniMap, miniMapPosition, zoomable, }: TreeCraftProps<T>): React.JSX.Element;
 
 interface TreeSearchProps<T> {
     /** Pass the same `data` you gave to <TreeCraft> */

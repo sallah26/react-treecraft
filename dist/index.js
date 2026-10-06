@@ -2,7 +2,7 @@
 
 var react = require('react');
 var jsxRuntime = require('react/jsx-runtime');
-require('./index-GOVUULLW.css');
+require('./index-VTBMRW75.css');
 
 // src/components/TreeCraft.tsx
 function DefaultCollapseBtn({ isCollapsed, onClick, orientation = "vertical" }) {
@@ -224,6 +224,7 @@ function TreeBranch({
   orientation,
   animationPreset,
   maxDepth,
+  childIndex,
   renderNode,
   renderCollapseButton,
   onCollapseChange,
@@ -243,7 +244,9 @@ function TreeBranch({
   const showCollapseBtn = collapsible && hasChildren && !depthLimited && !readOnly;
   const childrenRowRef = react.useRef(null);
   const children = node.children ?? [];
-  const animClass = animationPreset !== "none" ? `tc-anim-${animationPreset}-enter` : "";
+  const STAGGER_MS = 60;
+  const animClass = childIndex !== void 0 && animationPreset !== "none" ? `tc-anim-${animationPreset}-enter` : "";
+  const animStyle = animClass ? { animationDelay: `${childIndex * STAGGER_MS}ms`, animationFillMode: "both" } : {};
   const handleCollapseClick = (e) => {
     e.stopPropagation();
     if (readOnly) return;
@@ -286,7 +289,7 @@ function TreeBranch({
     toggleCollapse: () => onToggleCollapse(node.id)
   });
   if (orientation === "horizontal") {
-    return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "tc-branch tc-branch--horizontal", children: [
+    return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: `tc-branch tc-branch--horizontal ${animClass}`, style: animStyle, children: [
       /* @__PURE__ */ jsxRuntime.jsxs("div", { className: nodeWrapperClasses, children: [
         /* @__PURE__ */ jsxRuntime.jsx(
           "div",
@@ -308,10 +311,11 @@ function TreeBranch({
             highlightPathIds
           }
         ),
-        /* @__PURE__ */ jsxRuntime.jsx("div", { className: `tc-children-row tc-children-row--horizontal ${animClass}`, ref: childrenRowRef, children: children.map((child) => /* @__PURE__ */ jsxRuntime.jsx(
+        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "tc-children-row tc-children-row--horizontal", ref: childrenRowRef, children: children.map((child, idx) => /* @__PURE__ */ jsxRuntime.jsx(
           TreeBranch,
           {
             node: child,
+            childIndex: idx,
             collapsedIds,
             selectedIds,
             focusedNodeId,
@@ -335,7 +339,7 @@ function TreeBranch({
       ] })
     ] });
   }
-  return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "tc-branch tc-branch--vertical", children: [
+  return /* @__PURE__ */ jsxRuntime.jsxs("div", { className: `tc-branch tc-branch--vertical ${animClass}`, style: animStyle, children: [
     /* @__PURE__ */ jsxRuntime.jsxs("div", { className: nodeWrapperClasses, children: [
       /* @__PURE__ */ jsxRuntime.jsx(
         "div",
@@ -357,10 +361,11 @@ function TreeBranch({
           highlightPathIds
         }
       ),
-      /* @__PURE__ */ jsxRuntime.jsx("div", { className: `tc-children-row tc-children-row--vertical ${animClass}`, ref: childrenRowRef, children: children.map((child) => /* @__PURE__ */ jsxRuntime.jsx(
+      /* @__PURE__ */ jsxRuntime.jsx("div", { className: "tc-children-row tc-children-row--vertical", ref: childrenRowRef, children: children.map((child, idx) => /* @__PURE__ */ jsxRuntime.jsx(
         TreeBranch,
         {
           node: child,
+          childIndex: idx,
           collapsedIds,
           selectedIds,
           focusedNodeId,
@@ -567,6 +572,7 @@ function TreeCraft({
   // styling
   orientation = "vertical",
   animationPreset = "fade",
+  animationDuration,
   className = "",
   style,
   // features
@@ -664,12 +670,13 @@ function TreeCraft({
     transformOrigin: "center center",
     cursor: isPanning.current ? "grabbing" : "grab"
   } : {};
+  const durationStyle = animationDuration !== void 0 ? { "--tc-animation-duration": `${animationDuration}ms` } : {};
   return /* @__PURE__ */ jsxRuntime.jsxs(
     "div",
     {
       ref: containerRef,
       className: rootClasses,
-      style: { position: "relative", overflow: zoomable ? "hidden" : "auto", ...style },
+      style: { position: "relative", overflow: zoomable ? "hidden" : "auto", ...durationStyle, ...style },
       onWheel: zoomable ? handleWheel : void 0,
       onMouseDown: zoomable ? handleMouseDown : void 0,
       onMouseMove: zoomable ? handleMouseMove : void 0,
