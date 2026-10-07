@@ -1,8 +1,8 @@
 // ─────────────────────────────────────────────────────────────
 //  TreeBranch — renders one node + its subtree recursively
 // ─────────────────────────────────────────────────────────────
-import React, { useRef } from 'react';
-import type { InternalNode, TreeCraftProps } from '../types';
+import React, { useRef, useState } from 'react';
+import type { InternalNode, TreeCraftProps, DropPosition, NodeMoveEvent, CanDropFn } from '../types';
 import { DefaultCollapseBtn } from './DefaultCollapseBtn';
 import { TreeConnector } from './TreeConnector';
 
@@ -28,6 +28,14 @@ interface TreeBranchProps<T> {
   onNodeClick?: TreeCraftProps<T>['onNodeClick'];
   onToggleCollapse: (id: string) => void;
   onToggleSelect: (id: string, path: string[]) => void;
+  // Drag & Drop
+  draggableNodes?: boolean;
+  draggedNodeId?: string | null;
+  draggedNodeDescendants?: Set<string>;
+  onDragStartNode?: (id: string) => void;
+  onDragEndNode?: () => void;
+  onNodeMove?: (event: NodeMoveEvent) => void;
+  canDrop?: CanDropFn;
 }
 
 export function TreeBranch<T>({
@@ -51,6 +59,13 @@ export function TreeBranch<T>({
   onNodeClick,
   onToggleCollapse,
   onToggleSelect,
+  draggableNodes = false,
+  draggedNodeId,
+  draggedNodeDescendants,
+  onDragStartNode,
+  onDragEndNode,
+  onNodeMove,
+  canDrop,
 }: TreeBranchProps<T>) {
   const isCollapsed = collapsedIds.has(node.id);
   const isSelected = selectedIds.has(node.id);
@@ -64,6 +79,85 @@ export function TreeBranch<T>({
 
   const childrenRowRef = useRef<HTMLDivElement>(null);
   const children = (node.children ?? []) as InternalNode<T>[];
+
+  // ── Drag & Drop state ─────────────────────────────────────────
+  const [dropPosition, setDropPosition] = useState<DropPosition | null>(null);
+
+  const isDraggingThis = draggedNodeId === node.id;
+  const isDropTargetInvalid =
+    !draggedNodeId ||
+    draggedNodeId === node.id ||
+    (draggedNodeDescendants?.has(node.id) ?? false);
+
+  const handleDragStart = (e: React.DragEvent) => {
+    if (readOnly || !draggableNodes) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, select, textarea, a')) {
+      e.preventDefault();
+      return;
+    }
+    e.stopPropagation();
+    e.dataTransfer.setData('text/plain', node.id);
+    e.dataTransfer.effectAllowed = 'move';
+    onDragStartNode?.(node.id);
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    e.stopPropagation();
+    setDropPosition(null);
+    onDragEndNode?.();
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!draggableNodes || readOnly || isDropTargetInvalid) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    let pos: DropPosition = 'inside';
+
+    if (orientation === 'vertical') {
+      const xRatio = (e.clientX - rect.left) / rect.width;
+      if (xRatio < 0.25) pos = 'before';
+      else if (xRatio > 0.75) pos = 'after';
+      else pos = 'inside';
+    } else {
+      const yRatio = (e.clientY - rect.top) / rect.height;
+      if (yRatio < 0.25) pos = 'before';
+      else if (yRatio > 0.75) pos = 'after';
+      else pos = 'inside';
+    }
+
+    if (canDrop && draggedNodeId && !canDrop(draggedNodeId, node.id, pos)) {
+      e.dataTransfer.dropEffect = 'none';
+      setDropPosition(null);
+      return;
+    }
+
+    e.dataTransfer.dropEffect = 'move';
+    setDropPosition(pos);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDropPosition(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    if (!draggableNodes || readOnly || isDropTargetInvalid) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const sourceId = e.dataTransfer.getData('text/plain') || draggedNodeId;
+    if (sourceId && sourceId !== node.id && dropPosition) {
+      if (!canDrop || canDrop(sourceId, node.id, dropPosition)) {
+        onNodeMove?.({ sourceId, targetId: node.id, position: dropPosition });
+      }
+    }
+    setDropPosition(null);
+    onDragEndNode?.();
+  };
 
   // Stagger: each child animates 60ms after the previous one
   const STAGGER_MS = 60;
@@ -97,6 +191,9 @@ export function TreeBranch<T>({
     isSelected ? 'tc-node-wrapper--selected' : '',
     isOnPath ? 'tc-node-wrapper--on-path' : '',
     hasFocusPath ? 'tc-has-focus-path' : '',
+    draggableNodes && !readOnly ? 'tc-node-card--draggable' : '',
+    isDraggingThis ? 'tc-node-card--dragging' : '',
+    dropPosition === 'inside' ? 'tc-node-card--drop-inside' : '',
   ].filter(Boolean).join(' ');
 
   const collapseBtn = showCollapseBtn ? (
@@ -124,20 +221,39 @@ export function TreeBranch<T>({
     toggleCollapse: () => onToggleCollapse(node.id),
   });
 
+  const nodeCardEl = (
+    <div
+      className={nodeWrapperClasses}
+      data-tc-node-id={node.id}
+      draggable={draggableNodes && !readOnly}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      style={{ position: 'relative' }}
+    >
+      {dropPosition === 'before' && (
+        <div className="tc-drop-indicator tc-drop-indicator--before" />
+      )}
+      {dropPosition === 'after' && (
+        <div className="tc-drop-indicator tc-drop-indicator--after" />
+      )}
+      <div
+        className={`tc-node-inner ${isClickSelectable ? 'tc-node-inner--selectable' : ''}`}
+        onClick={handleNodeClick}
+      >
+        {renderedNodeContent}
+      </div>
+      {collapseBtn}
+    </div>
+  );
+
   // ── Horizontal Layout ─────────────────────────────────────────
   if (orientation === 'horizontal') {
     return (
       <div className={`tc-branch tc-branch--horizontal ${animClass}`} style={animStyle}>
-        {/* Node card */}
-        <div className={nodeWrapperClasses} data-tc-node-id={node.id}>
-          <div
-            className={`tc-node-inner ${isClickSelectable ? 'tc-node-inner--selectable' : ''}`}
-            onClick={handleNodeClick}
-          >
-            {renderedNodeContent}
-          </div>
-          {collapseBtn}
-        </div>
+        {nodeCardEl}
 
         {/* Subtree (connector zone + children column) */}
         {showChildren && (
@@ -172,6 +288,13 @@ export function TreeBranch<T>({
                   onNodeClick={onNodeClick}
                   onToggleCollapse={onToggleCollapse}
                   onToggleSelect={onToggleSelect}
+                  draggableNodes={draggableNodes}
+                  draggedNodeId={draggedNodeId}
+                  draggedNodeDescendants={draggedNodeDescendants}
+                  onDragStartNode={onDragStartNode}
+                  onDragEndNode={onDragEndNode}
+                  onNodeMove={onNodeMove}
+                  canDrop={canDrop}
                 />
               ))}
             </div>
@@ -184,16 +307,7 @@ export function TreeBranch<T>({
   // ── Vertical (default) Layout ─────────────────────────────────
   return (
     <div className={`tc-branch tc-branch--vertical ${animClass}`} style={animStyle}>
-      {/* Node card */}
-      <div className={nodeWrapperClasses} data-tc-node-id={node.id}>
-        <div
-          className={`tc-node-inner ${isClickSelectable ? 'tc-node-inner--selectable' : ''}`}
-          onClick={handleNodeClick}
-        >
-          {renderedNodeContent}
-        </div>
-        {collapseBtn}
-      </div>
+      {nodeCardEl}
 
       {/* Subtree (connector zone + children row) */}
       {showChildren && (
@@ -228,6 +342,13 @@ export function TreeBranch<T>({
                 onNodeClick={onNodeClick}
                 onToggleCollapse={onToggleCollapse}
                 onToggleSelect={onToggleSelect}
+                draggableNodes={draggableNodes}
+                draggedNodeId={draggedNodeId}
+                draggedNodeDescendants={draggedNodeDescendants}
+                onDragStartNode={onDragStartNode}
+                onDragEndNode={onDragEndNode}
+                onNodeMove={onNodeMove}
+                canDrop={canDrop}
               />
             ))}
           </div>

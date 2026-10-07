@@ -484,3 +484,61 @@
   transform: translate(-50%, -120%);
   transition: opacity 100ms ease;
 }
+
+/* ── Drag & Drop Interactions ─────────────────────────────────── */
+.tc-node-card--draggable {
+  cursor: grab;
+  user-select: none;
+}
+
+.tc-node-card--dragging {
+  opacity: 0.45;
+  transform: scale(0.96);
+  cursor: grabbing;
+}
+
+.tc-node-card--drop-inside {
+  box-shadow: 0 0 0 2px #38bdf8, 0 0 22px rgba(56, 189, 248, 0.45) !important;
+  background: rgba(14, 165, 233, 0.15) !important;
+  transition: box-shadow 150ms ease, background 150ms ease;
+}
+
+.tc-drop-indicator {
+  position: absolute;
+  pointer-events: none;
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8, 0 0 16px rgba(56, 189, 248, 0.5);
+  border-radius: 999px;
+  z-index: 50;
+  transition: all 120ms ease;
+}
+
+/* Vertical tree: siblings are placed side by side along X */
+.tc-branch--vertical .tc-drop-indicator--before {
+  top: 0;
+  bottom: 0;
+  left: -8px;
+  width: 3px;
+}
+
+.tc-branch--vertical .tc-drop-indicator--after {
+  top: 0;
+  bottom: 0;
+  right: -8px;
+  width: 3px;
+}
+
+/* Horizontal tree: siblings are placed vertically along Y */
+.tc-branch--horizontal .tc-drop-indicator--before {
+  left: 0;
+  right: 0;
+  top: -8px;
+  height: 3px;
+}
+
+.tc-branch--horizontal .tc-drop-indicator--after {
+  left: 0;
+  right: 0;
+  bottom: -8px;
+  height: 3px;
+}

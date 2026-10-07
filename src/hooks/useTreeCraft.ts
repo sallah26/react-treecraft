@@ -3,7 +3,7 @@
 //  The built-in state manager. Zero boilerplate for consumers.
 // ─────────────────────────────────────────────────────────────
 import { useState, useCallback } from 'react';
-import type { TreeNode, UseTreeCraftOptions, UseTreeCraftReturn } from '../types';
+import type { TreeNode, UseTreeCraftOptions, UseTreeCraftReturn, DropPosition } from '../types';
 import {
   toArray,
   generateId,
@@ -67,11 +67,11 @@ export function useTreeCraft<T = Record<string, unknown>>(
   );
 
   const moveNode = useCallback(
-    (nodeId: string, newParentId: string) => {
+    (nodeId: string, targetId: string, position: DropPosition = 'inside') => {
       setData((prev) => {
         const arr = toArray(prev);
-        const updated = moveNodeUtil(arr, nodeId, newParentId);
-        return isForest ? updated : updated[0];
+        const updated = moveNodeUtil(arr, nodeId, targetId, position);
+        return isForest ? updated : updated[0] ?? prev;
       });
     },
     [isForest],

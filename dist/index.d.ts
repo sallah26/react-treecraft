@@ -161,6 +161,24 @@ interface TreeCraftProps<T = Record<string, unknown>> {
     nodeClassName?: string;
     nodeStyle?: CSSProperties;
     /**
+     * Enable drag-and-drop node reordering and reparenting.
+     * @default false
+     */
+    draggableNodes?: boolean;
+    /**
+     * Alias for draggableNodes.
+     * @default false
+     */
+    draggable?: boolean;
+    /**
+     * Called when a node is dragged and dropped onto or beside another node.
+     */
+    onNodeMove?: (event: NodeMoveEvent) => void;
+    /**
+     * Optional custom validator to allow or forbid dropping sourceId onto targetId.
+     */
+    canDrop?: CanDropFn;
+    /**
      * Enable built-in scroll-to-zoom + drag-to-pan.
      * @default false
      */
@@ -175,6 +193,13 @@ interface TreeCraftProps<T = Record<string, unknown>> {
     /** Called when the user changes the mini-map corner position */
     onMiniMapPositionChange?: (position: MiniMapPosition) => void;
 }
+type DropPosition = 'inside' | 'before' | 'after';
+interface NodeMoveEvent {
+    sourceId: string;
+    targetId: string;
+    position: DropPosition;
+}
+type CanDropFn = (sourceId: string, targetId: string, position: DropPosition) => boolean;
 interface UseTreeCraftOptions<T = Record<string, unknown>> {
     initialData: TreeNode<T> | TreeNode<T>[];
 }
@@ -187,8 +212,8 @@ interface UseTreeCraftReturn<T = Record<string, unknown>> {
     removeNode: (id: string) => void;
     /** Update a node's data (shallow merge) */
     updateNode: (id: string, partialData: Partial<T>) => void;
-    /** Move a node to a new parent */
-    moveNode: (nodeId: string, newParentId: string) => void;
+    /** Move a node to a new parent or sibling position */
+    moveNode: (nodeId: string, targetId: string, position?: DropPosition) => void;
     /** Ids of currently collapsed nodes */
     collapsedIds: Set<string>;
     collapse: (id: string) => void;
@@ -210,7 +235,7 @@ interface UseTreeCraftReturn<T = Record<string, unknown>> {
     setData: (data: TreeNode<T> | TreeNode<T>[]) => void;
 }
 
-declare function TreeCraft<T = Record<string, unknown>>({ data, renderNode, collapsible, defaultCollapsed, collapsedIds: propCollapsedIds, collapseDepth, renderCollapseButton, onCollapseChange, orientation, animationPreset, animationDuration, className, style, readOnly, selectable, selectPath, onSelect, onNodeClick, focusedNodeId, highlightPath, maxDepth, miniMap, miniMapPosition, onMiniMapPositionChange, zoomable, }: TreeCraftProps<T>): React.JSX.Element;
+declare function TreeCraft<T = Record<string, unknown>>({ data, renderNode, collapsible, defaultCollapsed, collapsedIds: propCollapsedIds, collapseDepth, renderCollapseButton, onCollapseChange, orientation, animationPreset, animationDuration, className, style, readOnly, selectable, selectPath, onSelect, onNodeClick, focusedNodeId, highlightPath, maxDepth, miniMap, miniMapPosition, onMiniMapPositionChange, draggableNodes, draggable, onNodeMove, canDrop, zoomable, }: TreeCraftProps<T>): React.JSX.Element;
 
 interface TreeSearchProps<T> {
     /** Pass the same `data` you gave to <TreeCraft> */
@@ -280,8 +305,8 @@ declare function addChildNode<T>(nodes: TreeNode<T>[], parentId: string, newNode
 declare function removeNode<T>(nodes: TreeNode<T>[], id: string): TreeNode<T>[];
 /** Immutable: shallow-merge partialData into a node's data */
 declare function updateNodeData<T>(nodes: TreeNode<T>[], id: string, partial: Partial<T>): TreeNode<T>[];
-/** Immutable: move nodeId to be a child of newParentId */
-declare function moveNode<T>(nodes: TreeNode<T>[], nodeId: string, newParentId: string): TreeNode<T>[];
+/** Immutable: move nodeId to be a child of targetId, or beside targetId ('before' | 'after') */
+declare function moveNode<T>(nodes: TreeNode<T>[], nodeId: string, targetId: string, position?: 'inside' | 'before' | 'after'): TreeNode<T>[];
 /** Flatten a tree → array of { ...node, parentId } */
 declare function flattenTree<T>(nodes: TreeNode<T>[], parentId?: string | null): Array<TreeNode<T> & {
     parentId: string | null;

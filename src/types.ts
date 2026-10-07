@@ -210,6 +210,26 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
   nodeClassName?: string;
   nodeStyle?: CSSProperties;
 
+  // ── Drag & Drop ────────────────────────────────────────────
+  /**
+   * Enable drag-and-drop node reordering and reparenting.
+   * @default false
+   */
+  draggableNodes?: boolean;
+  /**
+   * Alias for draggableNodes.
+   * @default false
+   */
+  draggable?: boolean;
+  /**
+   * Called when a node is dragged and dropped onto or beside another node.
+   */
+  onNodeMove?: (event: NodeMoveEvent) => void;
+  /**
+   * Optional custom validator to allow or forbid dropping sourceId onto targetId.
+   */
+  canDrop?: CanDropFn;
+
   // ── Zoom / Pan ─────────────────────────────────────────────
   /**
    * Enable built-in scroll-to-zoom + drag-to-pan.
@@ -229,6 +249,18 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
   onMiniMapPositionChange?: (position: MiniMapPosition) => void;
 }
 
+// ── Drag & Drop Types ──────────────────────────────────────────────────────
+
+export type DropPosition = 'inside' | 'before' | 'after';
+
+export interface NodeMoveEvent {
+  sourceId: string;
+  targetId: string;
+  position: DropPosition;
+}
+
+export type CanDropFn = (sourceId: string, targetId: string, position: DropPosition) => boolean;
+
 // ── 7. useTreeCraft Hook Types ─────────────────────────────────────────────
 
 export interface UseTreeCraftOptions<T = Record<string, unknown>> {
@@ -246,8 +278,8 @@ export interface UseTreeCraftReturn<T = Record<string, unknown>> {
   removeNode: (id: string) => void;
   /** Update a node's data (shallow merge) */
   updateNode: (id: string, partialData: Partial<T>) => void;
-  /** Move a node to a new parent */
-  moveNode: (nodeId: string, newParentId: string) => void;
+  /** Move a node to a new parent or sibling position */
+  moveNode: (nodeId: string, targetId: string, position?: DropPosition) => void;
 
   // ── Collapse State ─────────────────────────────────────────
   /** Ids of currently collapsed nodes */

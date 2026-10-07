@@ -11,7 +11,7 @@ import React, {
 import type { TreeCraftProps } from '../types';
 import { TreeBranch } from './TreeBranch';
 import { MiniMap } from './MiniMap';
-import { annotate, toArray, collectAllIds, getPath } from '../utils/tree-helpers';
+import { annotate, toArray, collectAllIds, getPath, findNode, collectDescendantIds } from '../utils/tree-helpers';
 import '../styles/index.css';
 
 export function TreeCraft<T = Record<string, unknown>>({
@@ -42,10 +42,16 @@ export function TreeCraft<T = Record<string, unknown>>({
   miniMap = false,
   miniMapPosition = 'bottom-right',
   onMiniMapPositionChange,
+  // drag and drop
+  draggableNodes = false,
+  draggable = false,
+  onNodeMove,
+  canDrop,
   // zoom/pan
   zoomable = false,
 }: TreeCraftProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const isDraggable = draggableNodes || draggable;
 
   // ── Initial collapsed state ────────────────────────────────
   const initCollapsedIds = useMemo<Set<string>>(() => {
@@ -76,6 +82,25 @@ export function TreeCraft<T = Record<string, unknown>>({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [internalFocusedId, setInternalFocusedId] = useState<string | undefined>();
   const [internalHighlightPath, setInternalHighlightPath] = useState<string | undefined>();
+
+  // ── Drag & Drop state ─────────────────────────────────────
+  const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
+
+  const draggedNodeDescendants = useMemo<Set<string>>(() => {
+    if (!draggedNodeId) return new Set();
+    const arr = toArray(data);
+    const target = findNode(arr, draggedNodeId);
+    if (!target) return new Set();
+    return new Set(collectDescendantIds(target));
+  }, [draggedNodeId, data]);
+
+  const handleDragStartNode = useCallback((id: string) => {
+    setDraggedNodeId(id);
+  }, []);
+
+  const handleDragEndNode = useCallback(() => {
+    setDraggedNodeId(null);
+  }, []);
 
   const activeFocusedId = focusedNodeId !== undefined ? focusedNodeId : internalFocusedId;
   const activeHighlightPath = highlightPath !== undefined ? highlightPath : internalHighlightPath;
@@ -316,6 +341,13 @@ export function TreeCraft<T = Record<string, unknown>>({
                 onNodeClick={onNodeClick}
                 onToggleCollapse={toggleCollapse}
                 onToggleSelect={toggleSelect}
+                draggableNodes={isDraggable}
+                draggedNodeId={draggedNodeId}
+                draggedNodeDescendants={draggedNodeDescendants}
+                onDragStartNode={handleDragStartNode}
+                onDragEndNode={handleDragEndNode}
+                onNodeMove={onNodeMove}
+                canDrop={canDrop}
               />
             ))}
           </div>

@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useLayoutEffect, useMemo, useEffect } from 'react';
 import { jsx, jsxs } from 'react/jsx-runtime';
-import './index-GAMMOKTM.css';
+import './index-YQEIDMP2.css';
 
 // src/components/TreeCraft.tsx
 function DefaultCollapseBtn({ isCollapsed, onClick, orientation = "vertical" }) {
@@ -230,7 +230,14 @@ function TreeBranch({
   onSelect,
   onNodeClick,
   onToggleCollapse,
-  onToggleSelect
+  onToggleSelect,
+  draggableNodes = false,
+  draggedNodeId,
+  draggedNodeDescendants,
+  onDragStartNode,
+  onDragEndNode,
+  onNodeMove,
+  canDrop
 }) {
   const isCollapsed = collapsedIds.has(node.id);
   const isSelected = selectedIds.has(node.id);
@@ -243,6 +250,69 @@ function TreeBranch({
   const showCollapseBtn = collapsible && hasChildren && !depthLimited && !readOnly;
   const childrenRowRef = useRef(null);
   const children = node.children ?? [];
+  const [dropPosition, setDropPosition] = useState(null);
+  const isDraggingThis = draggedNodeId === node.id;
+  const isDropTargetInvalid = !draggedNodeId || draggedNodeId === node.id || (draggedNodeDescendants?.has(node.id) ?? false);
+  const handleDragStart = (e) => {
+    if (readOnly || !draggableNodes) return;
+    const target = e.target;
+    if (target.closest("button, input, select, textarea, a")) {
+      e.preventDefault();
+      return;
+    }
+    e.stopPropagation();
+    e.dataTransfer.setData("text/plain", node.id);
+    e.dataTransfer.effectAllowed = "move";
+    onDragStartNode?.(node.id);
+  };
+  const handleDragEnd = (e) => {
+    e.stopPropagation();
+    setDropPosition(null);
+    onDragEndNode?.();
+  };
+  const handleDragOver = (e) => {
+    if (!draggableNodes || readOnly || isDropTargetInvalid) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    let pos = "inside";
+    if (orientation === "vertical") {
+      const xRatio = (e.clientX - rect.left) / rect.width;
+      if (xRatio < 0.25) pos = "before";
+      else if (xRatio > 0.75) pos = "after";
+      else pos = "inside";
+    } else {
+      const yRatio = (e.clientY - rect.top) / rect.height;
+      if (yRatio < 0.25) pos = "before";
+      else if (yRatio > 0.75) pos = "after";
+      else pos = "inside";
+    }
+    if (canDrop && draggedNodeId && !canDrop(draggedNodeId, node.id, pos)) {
+      e.dataTransfer.dropEffect = "none";
+      setDropPosition(null);
+      return;
+    }
+    e.dataTransfer.dropEffect = "move";
+    setDropPosition(pos);
+  };
+  const handleDragLeave = (e) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDropPosition(null);
+    }
+  };
+  const handleDrop = (e) => {
+    if (!draggableNodes || readOnly || isDropTargetInvalid) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const sourceId = e.dataTransfer.getData("text/plain") || draggedNodeId;
+    if (sourceId && sourceId !== node.id && dropPosition) {
+      if (!canDrop || canDrop(sourceId, node.id, dropPosition)) {
+        onNodeMove?.({ sourceId, targetId: node.id, position: dropPosition });
+      }
+    }
+    setDropPosition(null);
+    onDragEndNode?.();
+  };
   const STAGGER_MS = 60;
   const animClass = childIndex !== void 0 && animationPreset !== "none" ? `tc-anim-${animationPreset}-enter` : "";
   const animStyle = animClass ? { animationDelay: `${childIndex * STAGGER_MS}ms`, animationFillMode: "both" } : {};
@@ -265,7 +335,10 @@ function TreeBranch({
     isFocused ? "tc-node-wrapper--focused" : "",
     isSelected ? "tc-node-wrapper--selected" : "",
     isOnPath ? "tc-node-wrapper--on-path" : "",
-    hasFocusPath ? "tc-has-focus-path" : ""
+    hasFocusPath ? "tc-has-focus-path" : "",
+    draggableNodes && !readOnly ? "tc-node-card--draggable" : "",
+    isDraggingThis ? "tc-node-card--dragging" : "",
+    dropPosition === "inside" ? "tc-node-card--drop-inside" : ""
   ].filter(Boolean).join(" ");
   const collapseBtn = showCollapseBtn ? renderCollapseButton ? renderCollapseButton({ isCollapsed, onToggle: handleCollapseClick, node }) : /* @__PURE__ */ jsx(
     DefaultCollapseBtn,
@@ -287,9 +360,21 @@ function TreeBranch({
     isOnHighlightedPath: isOnPath,
     toggleCollapse: () => onToggleCollapse(node.id)
   });
-  if (orientation === "horizontal") {
-    return /* @__PURE__ */ jsxs("div", { className: `tc-branch tc-branch--horizontal ${animClass}`, style: animStyle, children: [
-      /* @__PURE__ */ jsxs("div", { className: nodeWrapperClasses, "data-tc-node-id": node.id, children: [
+  const nodeCardEl = /* @__PURE__ */ jsxs(
+    "div",
+    {
+      className: nodeWrapperClasses,
+      "data-tc-node-id": node.id,
+      draggable: draggableNodes && !readOnly,
+      onDragStart: handleDragStart,
+      onDragEnd: handleDragEnd,
+      onDragOver: handleDragOver,
+      onDragLeave: handleDragLeave,
+      onDrop: handleDrop,
+      style: { position: "relative" },
+      children: [
+        dropPosition === "before" && /* @__PURE__ */ jsx("div", { className: "tc-drop-indicator tc-drop-indicator--before" }),
+        dropPosition === "after" && /* @__PURE__ */ jsx("div", { className: "tc-drop-indicator tc-drop-indicator--after" }),
         /* @__PURE__ */ jsx(
           "div",
           {
@@ -299,7 +384,12 @@ function TreeBranch({
           }
         ),
         collapseBtn
-      ] }),
+      ]
+    }
+  );
+  if (orientation === "horizontal") {
+    return /* @__PURE__ */ jsxs("div", { className: `tc-branch tc-branch--horizontal ${animClass}`, style: animStyle, children: [
+      nodeCardEl,
       showChildren && /* @__PURE__ */ jsxs("div", { className: "tc-subtree tc-subtree--horizontal", children: [
         /* @__PURE__ */ jsx(
           TreeConnector,
@@ -332,7 +422,14 @@ function TreeBranch({
             onSelect,
             onNodeClick,
             onToggleCollapse,
-            onToggleSelect
+            onToggleSelect,
+            draggableNodes,
+            draggedNodeId,
+            draggedNodeDescendants,
+            onDragStartNode,
+            onDragEndNode,
+            onNodeMove,
+            canDrop
           },
           child.id
         )) })
@@ -340,17 +437,7 @@ function TreeBranch({
     ] });
   }
   return /* @__PURE__ */ jsxs("div", { className: `tc-branch tc-branch--vertical ${animClass}`, style: animStyle, children: [
-    /* @__PURE__ */ jsxs("div", { className: nodeWrapperClasses, "data-tc-node-id": node.id, children: [
-      /* @__PURE__ */ jsx(
-        "div",
-        {
-          className: `tc-node-inner ${isClickSelectable ? "tc-node-inner--selectable" : ""}`,
-          onClick: handleNodeClick,
-          children: renderedNodeContent
-        }
-      ),
-      collapseBtn
-    ] }),
+    nodeCardEl,
     showChildren && /* @__PURE__ */ jsxs("div", { className: "tc-subtree tc-subtree--vertical", children: [
       /* @__PURE__ */ jsx(
         TreeConnector,
@@ -383,7 +470,14 @@ function TreeBranch({
           onSelect,
           onNodeClick,
           onToggleCollapse,
-          onToggleSelect
+          onToggleSelect,
+          draggableNodes,
+          draggedNodeId,
+          draggedNodeDescendants,
+          onDragStartNode,
+          onDragEndNode,
+          onNodeMove,
+          canDrop
         },
         child.id
       )) })
@@ -463,16 +557,40 @@ function updateNodeData(nodes, id, partial) {
     };
   });
 }
-function moveNode(nodes, nodeId, newParentId) {
-  const target = findNode(nodes, nodeId);
-  if (!target) return nodes;
-  const descendantIds = new Set(collectDescendantIds(target));
-  if (descendantIds.has(newParentId)) {
+function insertSiblingInArray(arr, targetId, newNode, position) {
+  const index = arr.findIndex((n) => n.id === targetId);
+  if (index === -1) return { updated: arr, found: false };
+  const insertIndex = position === "before" ? index : index + 1;
+  const next = [...arr];
+  next.splice(insertIndex, 0, newNode);
+  return { updated: next, found: true };
+}
+function insertSiblingRecursive(nodes, targetId, newNode, position) {
+  const atCurrentLevel = insertSiblingInArray(nodes, targetId, newNode, position);
+  if (atCurrentLevel.found) return atCurrentLevel.updated;
+  return nodes.map((node) => {
+    if (!node.children || node.children.length === 0) return node;
+    return {
+      ...node,
+      children: insertSiblingRecursive(node.children, targetId, newNode, position)
+    };
+  });
+}
+function moveNode(nodes, nodeId, targetId, position = "inside") {
+  if (nodeId === targetId) return nodes;
+  const nodeToMove = findNode(nodes, nodeId);
+  if (!nodeToMove) return nodes;
+  const descendantIds = new Set(collectDescendantIds(nodeToMove));
+  if (descendantIds.has(targetId)) {
     console.warn("[react-treecraft] Cannot move a node into its own descendant.");
     return nodes;
   }
   const stripped = removeNode(nodes, nodeId);
-  return addChildNode(stripped, newParentId, target);
+  if (position === "inside") {
+    return addChildNode(stripped, targetId, nodeToMove);
+  } else {
+    return insertSiblingRecursive(stripped, targetId, nodeToMove, position);
+  }
 }
 function flattenTree(nodes, parentId = null) {
   return nodes.flatMap((node) => [
@@ -930,10 +1048,16 @@ function TreeCraft({
   miniMap = false,
   miniMapPosition = "bottom-right",
   onMiniMapPositionChange,
+  // drag and drop
+  draggableNodes = false,
+  draggable = false,
+  onNodeMove,
+  canDrop,
   // zoom/pan
   zoomable = false
 }) {
   const containerRef = useRef(null);
+  const isDraggable = draggableNodes || draggable;
   const initCollapsedIds = useMemo(() => {
     const arr = toArray(data);
     const all = collectAllIds(arr);
@@ -962,6 +1086,20 @@ function TreeCraft({
   const [selectedIds, setSelectedIds] = useState(/* @__PURE__ */ new Set());
   const [internalFocusedId, setInternalFocusedId] = useState();
   const [internalHighlightPath, setInternalHighlightPath] = useState();
+  const [draggedNodeId, setDraggedNodeId] = useState(null);
+  const draggedNodeDescendants = useMemo(() => {
+    if (!draggedNodeId) return /* @__PURE__ */ new Set();
+    const arr = toArray(data);
+    const target = findNode(arr, draggedNodeId);
+    if (!target) return /* @__PURE__ */ new Set();
+    return new Set(collectDescendantIds(target));
+  }, [draggedNodeId, data]);
+  const handleDragStartNode = useCallback((id) => {
+    setDraggedNodeId(id);
+  }, []);
+  const handleDragEndNode = useCallback(() => {
+    setDraggedNodeId(null);
+  }, []);
   const activeFocusedId = focusedNodeId !== void 0 ? focusedNodeId : internalFocusedId;
   const activeHighlightPath = highlightPath !== void 0 ? highlightPath : internalHighlightPath;
   const toggleCollapse = useCallback((id) => {
@@ -1159,7 +1297,14 @@ function TreeCraft({
                 onSelect,
                 onNodeClick,
                 onToggleCollapse: toggleCollapse,
-                onToggleSelect: toggleSelect
+                onToggleSelect: toggleSelect,
+                draggableNodes: isDraggable,
+                draggedNodeId,
+                draggedNodeDescendants,
+                onDragStartNode: handleDragStartNode,
+                onDragEndNode: handleDragEndNode,
+                onNodeMove,
+                canDrop
               },
               node.id
             )) }) })
@@ -1331,11 +1476,11 @@ function useTreeCraft(options) {
     [isForest]
   );
   const moveNode2 = useCallback(
-    (nodeId, newParentId) => {
+    (nodeId, targetId, position = "inside") => {
       setData((prev) => {
         const arr = toArray(prev);
-        const updated = moveNode(arr, nodeId, newParentId);
-        return isForest ? updated : updated[0];
+        const updated = moveNode(arr, nodeId, targetId, position);
+        return isForest ? updated : updated[0] ?? prev;
       });
     },
     [isForest]

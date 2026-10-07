@@ -200,6 +200,7 @@ export default function App() {
   const [showMiniMap, setShowMiniMap] = useState(false);
   const [miniMapPosition, setMiniMapPosition] = useState<MiniMapPosition>('bottom-right');
   const [zoomable, setZoomable] = useState(false);
+  const [draggable, setDraggable] = useState(true);
   const [readOnly, setReadOnly] = useState(false);
   const [focusedId, setFocusedId] = useState<string | undefined>();
   const [highlightPath, setHighlightPath] = useState<string | undefined>();
@@ -288,6 +289,13 @@ export default function App() {
           </button>
 
           <button
+            className={`btn ${draggable ? 'btn--active' : ''}`}
+            onClick={() => setDraggable((d) => !d)}
+          >
+            {draggable ? '🖐️ Drag & Drop' : 'Drag & Drop'}
+          </button>
+
+          <button
             className={`btn ${readOnly ? 'btn--active' : ''}`}
             onClick={() => setReadOnly((r) => !r)}
           >
@@ -354,6 +362,10 @@ export default function App() {
               miniMapPosition={miniMapPosition}
               onMiniMapPositionChange={setMiniMapPosition}
               zoomable={zoomable}
+              draggableNodes={draggable}
+              onNodeMove={(e) => {
+                tree.moveNode(e.sourceId, e.targetId, e.position);
+              }}
               onSelect={(ids) => setSelectedIds(ids)}
               onNodeClick={(node) => console.log('Node clicked:', node.id)}
               renderNode={({ node, isRoot, isLeaf, isSelected, isFocused }) => (

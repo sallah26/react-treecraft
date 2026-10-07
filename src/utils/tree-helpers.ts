@@ -118,24 +118,68 @@ export function updateNodeData<T>(
   });
 }
 
-/** Immutable: move nodeId to be a child of newParentId */
+/** Helper to insert a node before or after a target sibling in an array */
+function insertSiblingInArray<T>(
+  arr: TreeNode<T>[],
+  targetId: string,
+  newNode: TreeNode<T>,
+  position: 'before' | 'after',
+): { updated: TreeNode<T>[]; found: boolean } {
+  const index = arr.findIndex((n) => n.id === targetId);
+  if (index === -1) return { updated: arr, found: false };
+  const insertIndex = position === 'before' ? index : index + 1;
+  const next = [...arr];
+  next.splice(insertIndex, 0, newNode);
+  return { updated: next, found: true };
+}
+
+/** Recursively insert a sibling before or after targetId */
+function insertSiblingRecursive<T>(
+  nodes: TreeNode<T>[],
+  targetId: string,
+  newNode: TreeNode<T>,
+  position: 'before' | 'after',
+): TreeNode<T>[] {
+  const atCurrentLevel = insertSiblingInArray(nodes, targetId, newNode, position);
+  if (atCurrentLevel.found) return atCurrentLevel.updated;
+
+  return nodes.map((node) => {
+    if (!node.children || node.children.length === 0) return node;
+    return {
+      ...node,
+      children: insertSiblingRecursive(node.children, targetId, newNode, position),
+    };
+  });
+}
+
+/** Immutable: move nodeId to be a child of targetId, or beside targetId ('before' | 'after') */
 export function moveNode<T>(
   nodes: TreeNode<T>[],
   nodeId: string,
-  newParentId: string,
+  targetId: string,
+  position: 'inside' | 'before' | 'after' = 'inside',
 ): TreeNode<T>[] {
-  const target = findNode(nodes, nodeId);
-  if (!target) return nodes;
+  if (nodeId === targetId) return nodes;
 
-  // prevent moving a node into one of its own descendants
-  const descendantIds = new Set(collectDescendantIds(target));
-  if (descendantIds.has(newParentId)) {
+  const nodeToMove = findNode(nodes, nodeId);
+  if (!nodeToMove) return nodes;
+
+  // Prevent moving a node into one of its own descendants (cycle prevention)
+  const descendantIds = new Set(collectDescendantIds(nodeToMove));
+  if (descendantIds.has(targetId)) {
     console.warn('[react-treecraft] Cannot move a node into its own descendant.');
     return nodes;
   }
 
+  // 1. Remove the node from its current position
   const stripped = removeNode(nodes, nodeId);
-  return addChildNode(stripped, newParentId, target);
+
+  // 2. Insert into the new location
+  if (position === 'inside') {
+    return addChildNode(stripped, targetId, nodeToMove);
+  } else {
+    return insertSiblingRecursive(stripped, targetId, nodeToMove, position);
+  }
 }
 
 /** Flatten a tree → array of { ...node, parentId } */
