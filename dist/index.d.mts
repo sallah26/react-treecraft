@@ -74,6 +74,11 @@ interface TreeCraftProps<T = Record<string, unknown>> {
      */
     defaultCollapsed?: boolean;
     /**
+     * Controlled set or array of collapsed node IDs.
+     * When provided, TreeCraft operates in controlled collapse mode.
+     */
+    collapsedIds?: Set<string> | string[];
+    /**
      * Auto-collapse nodes deeper than this level.
      * E.g. collapseDepth={2} → levels 0,1 open; level 2+ collapsed.
      */
@@ -205,7 +210,7 @@ interface UseTreeCraftReturn<T = Record<string, unknown>> {
     setData: (data: TreeNode<T> | TreeNode<T>[]) => void;
 }
 
-declare function TreeCraft<T = Record<string, unknown>>({ data, renderNode, collapsible, defaultCollapsed, collapseDepth, renderCollapseButton, onCollapseChange, orientation, animationPreset, animationDuration, className, style, readOnly, selectable, selectPath, onSelect, onNodeClick, focusedNodeId, highlightPath, maxDepth, miniMap, miniMapPosition, onMiniMapPositionChange, zoomable, }: TreeCraftProps<T>): React.JSX.Element;
+declare function TreeCraft<T = Record<string, unknown>>({ data, renderNode, collapsible, defaultCollapsed, collapsedIds: propCollapsedIds, collapseDepth, renderCollapseButton, onCollapseChange, orientation, animationPreset, animationDuration, className, style, readOnly, selectable, selectPath, onSelect, onNodeClick, focusedNodeId, highlightPath, maxDepth, miniMap, miniMapPosition, onMiniMapPositionChange, zoomable, }: TreeCraftProps<T>): React.JSX.Element;
 
 interface TreeSearchProps<T> {
     /** Pass the same `data` you gave to <TreeCraft> */

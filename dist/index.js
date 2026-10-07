@@ -910,6 +910,7 @@ function TreeCraft({
   // collapse
   collapsible = true,
   defaultCollapsed = false,
+  collapsedIds: propCollapsedIds,
   collapseDepth,
   renderCollapseButton,
   onCollapseChange,
@@ -953,20 +954,28 @@ function TreeCraft({
     if (defaultCollapsed) return new Set(all);
     return /* @__PURE__ */ new Set();
   }, []);
-  const [collapsedIds, setCollapsedIds] = react.useState(initCollapsedIds);
+  const isControlledCollapse = propCollapsedIds !== void 0;
+  const controlledCollapsedSet = react.useMemo(() => {
+    if (propCollapsedIds === void 0) return void 0;
+    return propCollapsedIds instanceof Set ? propCollapsedIds : new Set(propCollapsedIds);
+  }, [propCollapsedIds]);
+  const [internalCollapsedIds, setInternalCollapsedIds] = react.useState(initCollapsedIds);
+  const activeCollapsedIds = controlledCollapsedSet ?? internalCollapsedIds;
   const [selectedIds, setSelectedIds] = react.useState(/* @__PURE__ */ new Set());
   const [internalFocusedId, setInternalFocusedId] = react.useState();
   const [internalHighlightPath, setInternalHighlightPath] = react.useState();
   const activeFocusedId = focusedNodeId !== void 0 ? focusedNodeId : internalFocusedId;
   const activeHighlightPath = highlightPath !== void 0 ? highlightPath : internalHighlightPath;
   const toggleCollapse = react.useCallback((id) => {
-    setCollapsedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
+    if (!isControlledCollapse) {
+      setInternalCollapsedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+    }
+  }, [isControlledCollapse]);
   const toggleSelect = react.useCallback((id, path) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -1135,7 +1144,7 @@ function TreeCraft({
               TreeBranch,
               {
                 node,
-                collapsedIds,
+                collapsedIds: activeCollapsedIds,
                 selectedIds,
                 focusedNodeId: activeFocusedId,
                 highlightPathIds,

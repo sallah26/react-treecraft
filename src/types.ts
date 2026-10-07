@@ -103,6 +103,11 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
    */
   defaultCollapsed?: boolean;
   /**
+   * Controlled set or array of collapsed node IDs.
+   * When provided, TreeCraft operates in controlled collapse mode.
+   */
+  collapsedIds?: Set<string> | string[];
+  /**
    * Auto-collapse nodes deeper than this level.
    * E.g. collapseDepth={2} → levels 0,1 open; level 2+ collapsed.
    */

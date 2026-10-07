@@ -20,6 +20,7 @@ export function TreeCraft<T = Record<string, unknown>>({
   // collapse
   collapsible = true,
   defaultCollapsed = false,
+  collapsedIds: propCollapsedIds,
   collapseDepth,
   renderCollapseButton,
   onCollapseChange,
@@ -63,7 +64,15 @@ export function TreeCraft<T = Record<string, unknown>>({
     return new Set<string>();
   }, []); // intentionally only on mount
 
-  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(initCollapsedIds);
+  const isControlledCollapse = propCollapsedIds !== undefined;
+  const controlledCollapsedSet = useMemo(() => {
+    if (propCollapsedIds === undefined) return undefined;
+    return propCollapsedIds instanceof Set ? propCollapsedIds : new Set(propCollapsedIds);
+  }, [propCollapsedIds]);
+
+  const [internalCollapsedIds, setInternalCollapsedIds] = useState<Set<string>>(initCollapsedIds);
+
+  const activeCollapsedIds = controlledCollapsedSet ?? internalCollapsedIds;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [internalFocusedId, setInternalFocusedId] = useState<string | undefined>();
   const [internalHighlightPath, setInternalHighlightPath] = useState<string | undefined>();
@@ -72,12 +81,14 @@ export function TreeCraft<T = Record<string, unknown>>({
   const activeHighlightPath = highlightPath !== undefined ? highlightPath : internalHighlightPath;
 
   const toggleCollapse = useCallback((id: string) => {
-    setCollapsedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  }, []);
+    if (!isControlledCollapse) {
+      setInternalCollapsedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+      });
+    }
+  }, [isControlledCollapse]);
 
   const toggleSelect = useCallback((id: string, path: string[]) => {
     setSelectedIds((prev) => {
@@ -287,7 +298,7 @@ export function TreeCraft<T = Record<string, unknown>>({
               <TreeBranch
                 key={node.id}
                 node={node}
-                collapsedIds={collapsedIds}
+                collapsedIds={activeCollapsedIds}
                 selectedIds={selectedIds}
                 focusedNodeId={activeFocusedId}
                 highlightPathIds={highlightPathIds}

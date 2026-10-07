@@ -352,6 +352,8 @@ export default function App() {
               animationPreset={animPreset}
               animationDuration={Number(animDuration)}
               collapsible
+              collapsedIds={tree.collapsedIds}
+              onCollapseChange={(id, collapsed) => (collapsed ? tree.collapse(id) : tree.expand(id))}
               defaultCollapsed={false}
               selectPath={selectPath}
               readOnly={readOnly}
@@ -362,7 +364,6 @@ export default function App() {
               onMiniMapPositionChange={setMiniMapPosition}
               zoomable={zoomable}
               onSelect={(ids) => setSelectedIds(ids)}
-              onCollapseChange={(id, collapsed) => console.log('Collapse:', id, collapsed)}
               onNodeClick={(node) => console.log('Node clicked:', node.id)}
               renderNode={({ node, isRoot, isLeaf, isSelected, isFocused }) => (
                 <OrgNodeCard
