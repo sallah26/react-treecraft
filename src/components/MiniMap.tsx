@@ -61,8 +61,45 @@ export function MiniMap<T = Record<string, unknown>>({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [minimized, setMinimized] = useState(false);
   const [hoveredNode, setHoveredNode] = useState<{ label: string; x: number; y: number } | null>(null);
+  const [viewportBox, setViewportBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const isDraggingRadar = useRef(false);
 
   const dataArr = useMemo(() => toArray(data), [data]);
+
+  // ── Track Container Scroll & Viewport ─────────────────────────
+  useEffect(() => {
+    const container = containerRef?.current;
+    if (!container) return;
+
+    const updateViewport = () => {
+      const { scrollLeft, scrollTop, scrollWidth, scrollHeight, clientWidth, clientHeight } = container;
+      if (scrollWidth <= clientWidth + 2 && scrollHeight <= clientHeight + 2) {
+        setViewportBox(null);
+        return;
+      }
+      const w = scrollWidth > 0 ? Math.min(1, clientWidth / scrollWidth) : 1;
+      const h = scrollHeight > 0 ? Math.min(1, clientHeight / scrollHeight) : 1;
+      const x = scrollWidth > 0 ? Math.min(1 - w, Math.max(0, scrollLeft / scrollWidth)) : 0;
+      const y = scrollHeight > 0 ? Math.min(1 - h, Math.max(0, scrollTop / scrollHeight)) : 0;
+      setViewportBox({ x, y, w, h });
+    };
+
+    updateViewport();
+    container.addEventListener('scroll', updateViewport, { passive: true });
+    window.addEventListener('resize', updateViewport);
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(updateViewport);
+      resizeObserver.observe(container);
+    }
+
+    return () => {
+      container.removeEventListener('scroll', updateViewport);
+      window.removeEventListener('resize', updateViewport);
+      resizeObserver?.disconnect();
+    };
+  }, [containerRef, dataArr]);
 
   // ── Calculate Hierarchical Coordinates ───────────────────────
   const { layoutNodes, totalNodes } = useMemo(() => {
@@ -168,6 +205,21 @@ export function MiniMap<T = Record<string, unknown>>({
     ctx.save();
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    // 0. Draw Viewport Indicator Lens (if scrolling active)
+    if (viewportBox) {
+      const vx = viewportBox.x * CANVAS_WIDTH;
+      const vy = viewportBox.y * CANVAS_HEIGHT;
+      const vw = Math.max(14, viewportBox.w * CANVAS_WIDTH);
+      const vh = Math.max(14, viewportBox.h * CANVAS_HEIGHT);
+
+      ctx.fillStyle = 'rgba(96, 165, 250, 0.12)';
+      ctx.fillRect(vx, vy, vw, vh);
+
+      ctx.strokeStyle = 'rgba(96, 165, 250, 0.5)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(vx + 0.5, vy + 0.5, vw - 1, vh - 1);
+    }
 
     const nodeMap = new Map<string, LayoutItem<T>>();
     layoutNodes.forEach((n) => nodeMap.set(n.id, n));
@@ -282,7 +334,22 @@ export function MiniMap<T = Record<string, unknown>>({
     });
 
     ctx.restore();
-  }, [layoutNodes, focusedNodeId, highlightPathIds, selectedIds, orientation, minimized]);
+  }, [layoutNodes, focusedNodeId, highlightPathIds, selectedIds, orientation, minimized, viewportBox]);
+
+  // ── Panning & Navigation ─────────────────────────────────────
+  const panToCanvasCoords = useCallback((mouseX: number, mouseY: number, smooth = true) => {
+    const container = containerRef?.current;
+    if (!container) return;
+    const ratioX = Math.max(0, Math.min(1, mouseX / CANVAS_WIDTH));
+    const ratioY = Math.max(0, Math.min(1, mouseY / CANVAS_HEIGHT));
+    const targetLeft = ratioX * container.scrollWidth - container.clientWidth / 2;
+    const targetTop = ratioY * container.scrollHeight - container.clientHeight / 2;
+    container.scrollTo({
+      left: Math.max(0, targetLeft),
+      top: Math.max(0, targetTop),
+      behavior: smooth ? 'smooth' : 'auto',
+    });
+  }, [containerRef]);
 
   // ── Hover & Click Interactions ───────────────────────────────
   const handleMouseMove = useCallback(
@@ -292,6 +359,11 @@ export function MiniMap<T = Record<string, unknown>>({
       const rect = canvas.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
+
+      if (isDraggingRadar.current) {
+        panToCanvasCoords(mouseX, mouseY, false);
+        return;
+      }
 
       let found: LayoutItem<T> | null = null;
       for (const node of layoutNodes) {
@@ -311,28 +383,46 @@ export function MiniMap<T = Record<string, unknown>>({
         canvas.style.cursor = 'crosshair';
       }
     },
-    [layoutNodes],
+    [layoutNodes, panToCanvasCoords],
   );
 
-  const handleClick = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
 
-      for (const node of layoutNodes) {
-        const dx = node.canvasX - mouseX;
-        const dy = node.canvasY - mouseY;
-        if (Math.hypot(dx, dy) <= 10) {
-          onNodeClick?.(node.node);
-          break;
+    // Check if clicked a node
+    let hitNode: LayoutItem<T> | null = null;
+    for (const node of layoutNodes) {
+      const dx = node.canvasX - mouseX;
+      const dy = node.canvasY - mouseY;
+      if (Math.hypot(dx, dy) <= 10) {
+        hitNode = node;
+        break;
+      }
+    }
+
+    if (hitNode) {
+      onNodeClick?.(hitNode.node);
+      const container = containerRef?.current;
+      if (container) {
+        const el = container.querySelector(`[data-tc-node-id="${hitNode.id}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
         }
       }
-    },
-    [layoutNodes, onNodeClick],
-  );
+    } else {
+      isDraggingRadar.current = true;
+      panToCanvasCoords(mouseX, mouseY, true);
+    }
+  }, [layoutNodes, onNodeClick, containerRef, panToCanvasCoords]);
+
+  const handleMouseUp = useCallback(() => {
+    isDraggingRadar.current = false;
+  }, []);
 
   const handleCyclePosition = () => {
     const currentIndex = POSITIONS.indexOf(position);
@@ -395,8 +485,12 @@ export function MiniMap<T = Record<string, unknown>>({
             width={CANVAS_WIDTH}
             height={CANVAS_HEIGHT}
             onMouseMove={handleMouseMove}
-            onMouseLeave={() => setHoveredNode(null)}
-            onClick={handleClick}
+            onMouseDown={handleMouseDown}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={() => {
+              isDraggingRadar.current = false;
+              setHoveredNode(null);
+            }}
           />
           {hoveredNode && (
             <div

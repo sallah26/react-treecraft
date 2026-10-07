@@ -19,19 +19,30 @@
   --tc-collapse-btn-hover-bg: #f8fafc;
 }
 
-/* ── Root scroll container ──────────────────────────────────── */
+/* ── Root container (fixed frame for positioning overlays) ── */
 .tc-root {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* ── Viewport scroll container ──────────────────────────────── */
+.tc-viewport {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  width: 100%;
-  box-sizing: border-box;
-  overflow: auto;
-  position: relative;
+  -webkit-overflow-scrolling: touch;
 }
 
-.tc-root--horizontal {
+.tc-root--horizontal .tc-viewport {
   align-items: center;
   justify-content: flex-start;
 }

@@ -129,7 +129,7 @@ export function TreeBranch<T>({
     return (
       <div className={`tc-branch tc-branch--horizontal ${animClass}`} style={animStyle}>
         {/* Node card */}
-        <div className={nodeWrapperClasses}>
+        <div className={nodeWrapperClasses} data-tc-node-id={node.id}>
           <div
             className={`tc-node-inner ${isClickSelectable ? 'tc-node-inner--selectable' : ''}`}
             onClick={handleNodeClick}
@@ -185,7 +185,7 @@ export function TreeBranch<T>({
   return (
     <div className={`tc-branch tc-branch--vertical ${animClass}`} style={animStyle}>
       {/* Node card */}
-      <div className={nodeWrapperClasses}>
+      <div className={nodeWrapperClasses} data-tc-node-id={node.id}>
         <div
           className={`tc-node-inner ${isClickSelectable ? 'tc-node-inner--selectable' : ''}`}
           onClick={handleNodeClick}

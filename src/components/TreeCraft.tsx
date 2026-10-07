@@ -148,6 +148,8 @@ export function TreeCraft<T = Record<string, unknown>>({
 
   const handleMouseUp = useCallback(() => { isPanning.current = false; }, []);
 
+  const viewportRef = useRef<HTMLDivElement>(null);
+
   // ── Annotate data ─────────────────────────────────────────
   const annotatedNodes = useMemo(() => annotate(toArray(data)), [data]);
 
@@ -173,53 +175,76 @@ export function TreeCraft<T = Record<string, unknown>>({
     <div
       ref={containerRef}
       className={rootClasses}
-      style={{ position: 'relative', overflow: zoomable ? 'hidden' : 'auto', ...durationStyle, ...style }}
-      onWheel={zoomable ? handleWheel : undefined}
-      onMouseDown={zoomable ? handleMouseDown : undefined}
-      onMouseMove={zoomable ? handleMouseMove : undefined}
-      onMouseUp={zoomable ? handleMouseUp : undefined}
-      onMouseLeave={zoomable ? handleMouseUp : undefined}
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
+        ...durationStyle,
+        ...style,
+      }}
     >
-      <div className="tc-canvas" style={innerStyle}>
-        <div className={annotatedNodes.length > 1 ? 'tc-forest' : 'tc-tree-wrapper'}>
-          {annotatedNodes.map((node) => (
-            <TreeBranch
-              key={node.id}
-              node={node}
-              collapsedIds={collapsedIds}
-              selectedIds={selectedIds}
-              focusedNodeId={activeFocusedId}
-              highlightPathIds={highlightPathIds}
-              collapsible={collapsible}
-              selectable={selectable}
-              selectPath={selectPath}
-              readOnly={readOnly}
-              orientation={orientation}
-              animationPreset={animationPreset}
-              maxDepth={maxDepth}
-              renderNode={renderNode}
-              renderCollapseButton={renderCollapseButton}
-              onCollapseChange={onCollapseChange}
-              onSelect={onSelect}
-              onNodeClick={onNodeClick}
-              onToggleCollapse={toggleCollapse}
-              onToggleSelect={toggleSelect}
-            />
-          ))}
+      <div
+        ref={viewportRef}
+        className="tc-viewport"
+        style={{
+          overflow: zoomable ? 'hidden' : 'auto',
+          width: '100%',
+          height: '100%',
+        }}
+        onWheel={zoomable ? handleWheel : undefined}
+        onMouseDown={zoomable ? handleMouseDown : undefined}
+        onMouseMove={zoomable ? handleMouseMove : undefined}
+        onMouseUp={zoomable ? handleMouseUp : undefined}
+        onMouseLeave={zoomable ? handleMouseUp : undefined}
+      >
+        <div className="tc-canvas" style={innerStyle}>
+          <div className={annotatedNodes.length > 1 ? 'tc-forest' : 'tc-tree-wrapper'}>
+            {annotatedNodes.map((node) => (
+              <TreeBranch
+                key={node.id}
+                node={node}
+                collapsedIds={collapsedIds}
+                selectedIds={selectedIds}
+                focusedNodeId={activeFocusedId}
+                highlightPathIds={highlightPathIds}
+                collapsible={collapsible}
+                selectable={selectable}
+                selectPath={selectPath}
+                readOnly={readOnly}
+                orientation={orientation}
+                animationPreset={animationPreset}
+                maxDepth={maxDepth}
+                renderNode={renderNode}
+                renderCollapseButton={renderCollapseButton}
+                onCollapseChange={onCollapseChange}
+                onSelect={onSelect}
+                onNodeClick={onNodeClick}
+                onToggleCollapse={toggleCollapse}
+                onToggleSelect={toggleSelect}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
       {miniMap && (
         <MiniMap
           data={data}
-          containerRef={containerRef}
+          containerRef={viewportRef}
           orientation={orientation}
           focusedNodeId={activeFocusedId}
           highlightPathIds={highlightPathIds}
           selectedIds={selectedIds}
           position={miniMapPosition}
           onPositionChange={onMiniMapPositionChange}
-          onNodeClick={onNodeClick}
+          onNodeClick={(node) => {
+            onNodeClick?.(node);
+            const el = viewportRef.current?.querySelector(`[data-tc-node-id="${node.id}"]`);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+            }
+          }}
         />
       )}
     </div>

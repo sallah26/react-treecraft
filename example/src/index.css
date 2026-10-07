@@ -83,11 +83,12 @@ body {
   background: rgba(15,23,42,0.6);
   border: 1px solid rgba(255,255,255,0.07);
   border-radius: 20px;
-  padding: 48px 32px;
+  padding: 0;
   backdrop-filter: blur(8px);
-  overflow: auto;
-  min-height: 300px;
+  overflow: hidden;
+  min-height: 480px;
   position: relative;
+  display: flex;
 }
 
 /* ── Custom Node card ── */
