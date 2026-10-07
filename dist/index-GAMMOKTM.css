@@ -37,14 +37,11 @@
   overflow: auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
   -webkit-overflow-scrolling: touch;
 }
 
 .tc-root--horizontal .tc-viewport {
-  align-items: center;
-  justify-content: flex-start;
+  flex-direction: row;
 }
 
 /* ── Canvas wrapper (centers tree horizontally & vertically) ── */
@@ -54,10 +51,11 @@
   align-items: center;
   justify-content: center;
   min-width: 100%;
+  min-height: 100%;
   width: max-content;
   box-sizing: border-box;
-  padding: 24px;
-  margin: 0 auto;
+  padding: 32px;
+  margin: auto;
 }
 
 .tc-root--horizontal .tc-canvas {

@@ -118,37 +118,121 @@ export function TreeCraft<T = Record<string, unknown>>({
   }, [activeHighlightPath, data]);
 
   // ── Zoom / Pan ────────────────────────────────────────────
-  const [scale, setScale] = useState(1);
-  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+  const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
+  const transformRef = useRef({ scale: 1, x: 0, y: 0 });
   const isPanning = useRef(false);
   const panStart = useRef({ x: 0, y: 0 });
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
 
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
-      if (!zoomable) return;
+  // Keep transformRef in sync
+  useEffect(() => {
+    transformRef.current = transform;
+  }, [transform]);
+
+  // Reset when zoomable changes
+  useEffect(() => {
+    if (!zoomable) {
+      transformRef.current = { scale: 1, x: 0, y: 0 };
+      setTransform({ scale: 1, x: 0, y: 0 });
+      if (canvasRef.current) {
+        canvasRef.current.style.transform = '';
+      }
+    }
+  }, [zoomable]);
+
+  useEffect(() => {
+    if (!zoomable) return;
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const handleWheelNative = (e: WheelEvent) => {
       e.preventDefault();
-      setScale((s) => Math.min(3, Math.max(0.2, s - e.deltaY * 0.001)));
-    },
-    [zoomable],
-  );
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const currentScale = transformRef.current.scale;
+      const currentX = transformRef.current.x;
+      const currentY = transformRef.current.y;
+
+      const scaleMultiplier = Math.exp(-e.deltaY * 0.0015);
+      const nextScale = Math.min(4, Math.max(0.15, currentScale * scaleMultiplier));
+      if (nextScale === currentScale) return;
+      const ratio = nextScale / currentScale;
+
+      // Cursor position relative to the currently rendered canvas bounds
+      const canvasRect = canvas.getBoundingClientRect();
+      const cursorCanvasX = e.clientX - canvasRect.left;
+      const cursorCanvasY = e.clientY - canvasRect.top;
+
+      const nextX = currentX + cursorCanvasX * (1 - ratio);
+      const nextY = currentY + cursorCanvasY * (1 - ratio);
+
+      transformRef.current = { scale: nextScale, x: nextX, y: nextY };
+      canvas.style.transform = `translate(${nextX}px, ${nextY}px) scale(${nextScale})`;
+      setTransform({ scale: nextScale, x: nextX, y: nextY });
+    };
+
+    viewport.addEventListener('wheel', handleWheelNative, { passive: false });
+    return () => {
+      viewport.removeEventListener('wheel', handleWheelNative);
+    };
+  }, [zoomable]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (!zoomable || e.button !== 0) return;
+      const target = e.target as HTMLElement;
+      if (target.closest('button, input, select, textarea, a')) return;
+
       isPanning.current = true;
-      panStart.current = { x: e.clientX - translate.x, y: e.clientY - translate.y };
+      panStart.current = {
+        x: e.clientX - transformRef.current.x,
+        y: e.clientY - transformRef.current.y,
+      };
     },
-    [zoomable, translate],
+    [zoomable],
   );
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isPanning.current) return;
-    setTranslate({ x: e.clientX - panStart.current.x, y: e.clientY - panStart.current.y });
+    const canvas = canvasRef.current;
+    const nextX = e.clientX - panStart.current.x;
+    const nextY = e.clientY - panStart.current.y;
+    transformRef.current.x = nextX;
+    transformRef.current.y = nextY;
+    if (canvas) {
+      canvas.style.transform = `translate(${nextX}px, ${nextY}px) scale(${transformRef.current.scale})`;
+    }
+    setTransform((prev) => ({ ...prev, x: nextX, y: nextY }));
   }, []);
 
-  const handleMouseUp = useCallback(() => { isPanning.current = false; }, []);
+  const handleMouseUp = useCallback(() => {
+    isPanning.current = false;
+  }, []);
 
-  const viewportRef = useRef<HTMLDivElement>(null);
+  const handleNavigate = useCallback((ratioX: number, ratioY: number) => {
+    const canvas = canvasRef.current;
+    const viewport = viewportRef.current;
+    if (!canvas || !viewport) return;
+
+    const currentScale = transformRef.current.scale;
+    const vRect = viewport.getBoundingClientRect();
+    const cRect = canvas.getBoundingClientRect();
+
+    const layoutLeft = (cRect.left - vRect.left) - transformRef.current.x;
+    const layoutTop = (cRect.top - vRect.top) - transformRef.current.y;
+
+    const cWidth = canvas.offsetWidth;
+    const cHeight = canvas.offsetHeight;
+
+    const nextX = (vRect.width / 2) - layoutLeft - ratioX * cWidth * currentScale;
+    const nextY = (vRect.height / 2) - layoutTop - ratioY * cHeight * currentScale;
+
+    transformRef.current = { scale: currentScale, x: nextX, y: nextY };
+    canvas.style.transform = `translate(${nextX}px, ${nextY}px) scale(${currentScale})`;
+    setTransform({ scale: currentScale, x: nextX, y: nextY });
+  }, []);
 
   // ── Annotate data ─────────────────────────────────────────
   const annotatedNodes = useMemo(() => annotate(toArray(data)), [data]);
@@ -161,8 +245,8 @@ export function TreeCraft<T = Record<string, unknown>>({
 
   const innerStyle: React.CSSProperties = zoomable
     ? {
-        transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
-        transformOrigin: 'center center',
+        transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+        transformOrigin: '0 0',
         cursor: isPanning.current ? 'grabbing' : 'grab',
       }
     : {};
@@ -192,13 +276,12 @@ export function TreeCraft<T = Record<string, unknown>>({
           width: '100%',
           height: '100%',
         }}
-        onWheel={zoomable ? handleWheel : undefined}
         onMouseDown={zoomable ? handleMouseDown : undefined}
         onMouseMove={zoomable ? handleMouseMove : undefined}
         onMouseUp={zoomable ? handleMouseUp : undefined}
         onMouseLeave={zoomable ? handleMouseUp : undefined}
       >
-        <div className="tc-canvas" style={innerStyle}>
+        <div ref={canvasRef} className="tc-canvas" style={innerStyle}>
           <div className={annotatedNodes.length > 1 ? 'tc-forest' : 'tc-tree-wrapper'}>
             {annotatedNodes.map((node) => (
               <TreeBranch
@@ -238,11 +321,31 @@ export function TreeCraft<T = Record<string, unknown>>({
           selectedIds={selectedIds}
           position={miniMapPosition}
           onPositionChange={onMiniMapPositionChange}
+          scale={zoomable ? transform.scale : undefined}
+          translate={zoomable ? { x: transform.x, y: transform.y } : undefined}
+          onNavigate={zoomable ? handleNavigate : undefined}
           onNodeClick={(node) => {
             onNodeClick?.(node);
-            const el = viewportRef.current?.querySelector(`[data-tc-node-id="${node.id}"]`);
+            const el = viewportRef.current?.querySelector(`[data-tc-node-id="${node.id}"]`) as HTMLElement | null;
             if (el) {
-              el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+              if (zoomable) {
+                const canvas = canvasRef.current;
+                const viewport = viewportRef.current;
+                if (canvas && viewport) {
+                  const nodeRect = el.getBoundingClientRect();
+                  const vRect = viewport.getBoundingClientRect();
+                  const deltaX = (vRect.left + vRect.width / 2) - (nodeRect.left + nodeRect.width / 2);
+                  const deltaY = (vRect.top + vRect.height / 2) - (nodeRect.top + nodeRect.height / 2);
+                  const nextX = transformRef.current.x + deltaX;
+                  const nextY = transformRef.current.y + deltaY;
+                  transformRef.current.x = nextX;
+                  transformRef.current.y = nextY;
+                  canvas.style.transform = `translate(${nextX}px, ${nextY}px) scale(${transformRef.current.scale})`;
+                  setTransform((prev) => ({ ...prev, x: nextX, y: nextY }));
+                }
+              } else {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+              }
             }
           }}
         />

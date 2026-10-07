@@ -345,7 +345,7 @@ export default function App() {
             <span className="info-bar__item">Animation: <strong>{animPreset}</strong> @ <strong>{animDuration}ms</strong></span>
           </div>
 
-          <div className="tree-container" style={{ height: zoomable ? '70vh' : 'auto' }}>
+          <div className="tree-container" style={{ height: '70vh' }}>
             <TreeCraft<OrgNode>
               data={tree.data}
               orientation={orientation}

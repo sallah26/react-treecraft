@@ -57,6 +57,9 @@ export function MiniMap<T = Record<string, unknown>>({
   position = 'bottom-right',
   onPositionChange,
   onNodeClick,
+  scale,
+  translate,
+  onNavigate,
 }: MiniMapProps<T>) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [minimized, setMinimized] = useState(false);
@@ -72,6 +75,30 @@ export function MiniMap<T = Record<string, unknown>>({
     if (!container) return;
 
     const updateViewport = () => {
+      if (scale !== undefined && translate !== undefined) {
+        // Zoom/Pan mode: compute viewport radar box from canvas bounds
+        const canvasEl = container.querySelector('.tc-canvas') as HTMLElement | null;
+        if (!canvasEl) return;
+
+        const cRect = canvasEl.getBoundingClientRect();
+        const vRect = container.getBoundingClientRect();
+
+        if (cRect.width <= 0 || cRect.height <= 0) return;
+
+        const w = Math.min(1, Math.max(0.08, vRect.width / cRect.width));
+        const h = Math.min(1, Math.max(0.08, vRect.height / cRect.height));
+
+        const leftOffset = vRect.left - cRect.left;
+        const topOffset = vRect.top - cRect.top;
+
+        const x = Math.min(1 - w, Math.max(0, leftOffset / cRect.width));
+        const y = Math.min(1 - h, Math.max(0, topOffset / cRect.height));
+
+        setViewportBox({ x, y, w, h });
+        return;
+      }
+
+      // Standard scroll mode
       const { scrollLeft, scrollTop, scrollWidth, scrollHeight, clientWidth, clientHeight } = container;
       if (scrollWidth <= clientWidth + 2 && scrollHeight <= clientHeight + 2) {
         setViewportBox(null);
@@ -99,7 +126,7 @@ export function MiniMap<T = Record<string, unknown>>({
       window.removeEventListener('resize', updateViewport);
       resizeObserver?.disconnect();
     };
-  }, [containerRef, dataArr]);
+  }, [containerRef, dataArr, scale, translate]);
 
   // ── Calculate Hierarchical Coordinates ───────────────────────
   const { layoutNodes, totalNodes } = useMemo(() => {
@@ -342,6 +369,12 @@ export function MiniMap<T = Record<string, unknown>>({
     if (!container) return;
     const ratioX = Math.max(0, Math.min(1, mouseX / CANVAS_WIDTH));
     const ratioY = Math.max(0, Math.min(1, mouseY / CANVAS_HEIGHT));
+
+    if (scale !== undefined && translate !== undefined && onNavigate) {
+      onNavigate(ratioX, ratioY);
+      return;
+    }
+
     const targetLeft = ratioX * container.scrollWidth - container.clientWidth / 2;
     const targetTop = ratioY * container.scrollHeight - container.clientHeight / 2;
     container.scrollTo({
@@ -349,7 +382,7 @@ export function MiniMap<T = Record<string, unknown>>({
       top: Math.max(0, targetTop),
       behavior: smooth ? 'smooth' : 'auto',
     });
-  }, [containerRef]);
+  }, [containerRef, scale, translate, onNavigate]);
 
   // ── Hover & Click Interactions ───────────────────────────────
   const handleMouseMove = useCallback(

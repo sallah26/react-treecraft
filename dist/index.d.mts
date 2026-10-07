@@ -236,7 +236,7 @@ interface MiniMapProps<T = Record<string, unknown>> {
     onNavigate?: (x: number, y: number) => void;
     onNodeClick?: (node: TreeNode<T>) => void;
 }
-declare function MiniMap<T = Record<string, unknown>>({ data, containerRef, orientation, focusedNodeId, highlightPathIds, selectedIds, position, onPositionChange, onNodeClick, }: MiniMapProps<T>): React.JSX.Element;
+declare function MiniMap<T = Record<string, unknown>>({ data, containerRef, orientation, focusedNodeId, highlightPathIds, selectedIds, position, onPositionChange, onNodeClick, scale, translate, onNavigate, }: MiniMapProps<T>): React.JSX.Element;
 
 interface Props {
     isCollapsed: boolean;

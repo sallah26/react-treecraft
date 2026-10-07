@@ -2,7 +2,7 @@
 
 var react = require('react');
 var jsxRuntime = require('react/jsx-runtime');
-require('./index-HUIEPIKP.css');
+require('./index-GAMMOKTM.css');
 
 // src/components/TreeCraft.tsx
 function DefaultCollapseBtn({ isCollapsed, onClick, orientation = "vertical" }) {
@@ -517,7 +517,10 @@ function MiniMap({
   selectedIds,
   position = "bottom-right",
   onPositionChange,
-  onNodeClick
+  onNodeClick,
+  scale,
+  translate,
+  onNavigate
 }) {
   const canvasRef = react.useRef(null);
   const [minimized, setMinimized] = react.useState(false);
@@ -529,6 +532,21 @@ function MiniMap({
     const container = containerRef?.current;
     if (!container) return;
     const updateViewport = () => {
+      if (scale !== void 0 && translate !== void 0) {
+        const canvasEl = container.querySelector(".tc-canvas");
+        if (!canvasEl) return;
+        const cRect = canvasEl.getBoundingClientRect();
+        const vRect = container.getBoundingClientRect();
+        if (cRect.width <= 0 || cRect.height <= 0) return;
+        const w2 = Math.min(1, Math.max(0.08, vRect.width / cRect.width));
+        const h2 = Math.min(1, Math.max(0.08, vRect.height / cRect.height));
+        const leftOffset = vRect.left - cRect.left;
+        const topOffset = vRect.top - cRect.top;
+        const x2 = Math.min(1 - w2, Math.max(0, leftOffset / cRect.width));
+        const y2 = Math.min(1 - h2, Math.max(0, topOffset / cRect.height));
+        setViewportBox({ x: x2, y: y2, w: w2, h: h2 });
+        return;
+      }
       const { scrollLeft, scrollTop, scrollWidth, scrollHeight, clientWidth, clientHeight } = container;
       if (scrollWidth <= clientWidth + 2 && scrollHeight <= clientHeight + 2) {
         setViewportBox(null);
@@ -553,7 +571,7 @@ function MiniMap({
       window.removeEventListener("resize", updateViewport);
       resizeObserver?.disconnect();
     };
-  }, [containerRef, dataArr]);
+  }, [containerRef, dataArr, scale, translate]);
   const { layoutNodes, totalNodes } = react.useMemo(() => {
     const nodes = [];
     let leafCounter = 0;
@@ -737,6 +755,10 @@ function MiniMap({
     if (!container) return;
     const ratioX = Math.max(0, Math.min(1, mouseX / CANVAS_WIDTH));
     const ratioY = Math.max(0, Math.min(1, mouseY / CANVAS_HEIGHT));
+    if (scale !== void 0 && translate !== void 0 && onNavigate) {
+      onNavigate(ratioX, ratioY);
+      return;
+    }
     const targetLeft = ratioX * container.scrollWidth - container.clientWidth / 2;
     const targetTop = ratioY * container.scrollHeight - container.clientHeight / 2;
     container.scrollTo({
@@ -744,7 +766,7 @@ function MiniMap({
       top: Math.max(0, targetTop),
       behavior: smooth ? "smooth" : "auto"
     });
-  }, [containerRef]);
+  }, [containerRef, scale, translate, onNavigate]);
   const handleMouseMove = react.useCallback(
     (e) => {
       const canvas = canvasRef.current;
@@ -977,34 +999,98 @@ function TreeCraft({
     const chain = getPath(arr, activeHighlightPath);
     return chain ? new Set(chain.map((n) => n.id)) : void 0;
   }, [activeHighlightPath, data]);
-  const [scale, setScale] = react.useState(1);
-  const [translate, setTranslate] = react.useState({ x: 0, y: 0 });
+  const [transform, setTransform] = react.useState({ scale: 1, x: 0, y: 0 });
+  const transformRef = react.useRef({ scale: 1, x: 0, y: 0 });
   const isPanning = react.useRef(false);
   const panStart = react.useRef({ x: 0, y: 0 });
-  const handleWheel = react.useCallback(
-    (e) => {
-      if (!zoomable) return;
+  const viewportRef = react.useRef(null);
+  const canvasRef = react.useRef(null);
+  react.useEffect(() => {
+    transformRef.current = transform;
+  }, [transform]);
+  react.useEffect(() => {
+    if (!zoomable) {
+      transformRef.current = { scale: 1, x: 0, y: 0 };
+      setTransform({ scale: 1, x: 0, y: 0 });
+      if (canvasRef.current) {
+        canvasRef.current.style.transform = "";
+      }
+    }
+  }, [zoomable]);
+  react.useEffect(() => {
+    if (!zoomable) return;
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const handleWheelNative = (e) => {
       e.preventDefault();
-      setScale((s) => Math.min(3, Math.max(0.2, s - e.deltaY * 1e-3)));
-    },
-    [zoomable]
-  );
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const currentScale = transformRef.current.scale;
+      const currentX = transformRef.current.x;
+      const currentY = transformRef.current.y;
+      const scaleMultiplier = Math.exp(-e.deltaY * 15e-4);
+      const nextScale = Math.min(4, Math.max(0.15, currentScale * scaleMultiplier));
+      if (nextScale === currentScale) return;
+      const ratio = nextScale / currentScale;
+      const canvasRect = canvas.getBoundingClientRect();
+      const cursorCanvasX = e.clientX - canvasRect.left;
+      const cursorCanvasY = e.clientY - canvasRect.top;
+      const nextX = currentX + cursorCanvasX * (1 - ratio);
+      const nextY = currentY + cursorCanvasY * (1 - ratio);
+      transformRef.current = { scale: nextScale, x: nextX, y: nextY };
+      canvas.style.transform = `translate(${nextX}px, ${nextY}px) scale(${nextScale})`;
+      setTransform({ scale: nextScale, x: nextX, y: nextY });
+    };
+    viewport.addEventListener("wheel", handleWheelNative, { passive: false });
+    return () => {
+      viewport.removeEventListener("wheel", handleWheelNative);
+    };
+  }, [zoomable]);
   const handleMouseDown = react.useCallback(
     (e) => {
       if (!zoomable || e.button !== 0) return;
+      const target = e.target;
+      if (target.closest("button, input, select, textarea, a")) return;
       isPanning.current = true;
-      panStart.current = { x: e.clientX - translate.x, y: e.clientY - translate.y };
+      panStart.current = {
+        x: e.clientX - transformRef.current.x,
+        y: e.clientY - transformRef.current.y
+      };
     },
-    [zoomable, translate]
+    [zoomable]
   );
   const handleMouseMove = react.useCallback((e) => {
     if (!isPanning.current) return;
-    setTranslate({ x: e.clientX - panStart.current.x, y: e.clientY - panStart.current.y });
+    const canvas = canvasRef.current;
+    const nextX = e.clientX - panStart.current.x;
+    const nextY = e.clientY - panStart.current.y;
+    transformRef.current.x = nextX;
+    transformRef.current.y = nextY;
+    if (canvas) {
+      canvas.style.transform = `translate(${nextX}px, ${nextY}px) scale(${transformRef.current.scale})`;
+    }
+    setTransform((prev) => ({ ...prev, x: nextX, y: nextY }));
   }, []);
   const handleMouseUp = react.useCallback(() => {
     isPanning.current = false;
   }, []);
-  const viewportRef = react.useRef(null);
+  const handleNavigate = react.useCallback((ratioX, ratioY) => {
+    const canvas = canvasRef.current;
+    const viewport = viewportRef.current;
+    if (!canvas || !viewport) return;
+    const currentScale = transformRef.current.scale;
+    const vRect = viewport.getBoundingClientRect();
+    const cRect = canvas.getBoundingClientRect();
+    const layoutLeft = cRect.left - vRect.left - transformRef.current.x;
+    const layoutTop = cRect.top - vRect.top - transformRef.current.y;
+    const cWidth = canvas.offsetWidth;
+    const cHeight = canvas.offsetHeight;
+    const nextX = vRect.width / 2 - layoutLeft - ratioX * cWidth * currentScale;
+    const nextY = vRect.height / 2 - layoutTop - ratioY * cHeight * currentScale;
+    transformRef.current = { scale: currentScale, x: nextX, y: nextY };
+    canvas.style.transform = `translate(${nextX}px, ${nextY}px) scale(${currentScale})`;
+    setTransform({ scale: currentScale, x: nextX, y: nextY });
+  }, []);
   const annotatedNodes = react.useMemo(() => annotate(toArray(data)), [data]);
   const rootClasses = [
     "tc-root",
@@ -1012,8 +1098,8 @@ function TreeCraft({
     className
   ].filter(Boolean).join(" ");
   const innerStyle = zoomable ? {
-    transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
-    transformOrigin: "center center",
+    transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+    transformOrigin: "0 0",
     cursor: isPanning.current ? "grabbing" : "grab"
   } : {};
   const durationStyle = animationDuration !== void 0 ? { "--tc-animation-duration": `${animationDuration}ms` } : {};
@@ -1041,12 +1127,11 @@ function TreeCraft({
               width: "100%",
               height: "100%"
             },
-            onWheel: zoomable ? handleWheel : void 0,
             onMouseDown: zoomable ? handleMouseDown : void 0,
             onMouseMove: zoomable ? handleMouseMove : void 0,
             onMouseUp: zoomable ? handleMouseUp : void 0,
             onMouseLeave: zoomable ? handleMouseUp : void 0,
-            children: /* @__PURE__ */ jsxRuntime.jsx("div", { className: "tc-canvas", style: innerStyle, children: /* @__PURE__ */ jsxRuntime.jsx("div", { className: annotatedNodes.length > 1 ? "tc-forest" : "tc-tree-wrapper", children: annotatedNodes.map((node) => /* @__PURE__ */ jsxRuntime.jsx(
+            children: /* @__PURE__ */ jsxRuntime.jsx("div", { ref: canvasRef, className: "tc-canvas", style: innerStyle, children: /* @__PURE__ */ jsxRuntime.jsx("div", { className: annotatedNodes.length > 1 ? "tc-forest" : "tc-tree-wrapper", children: annotatedNodes.map((node) => /* @__PURE__ */ jsxRuntime.jsx(
               TreeBranch,
               {
                 node,
@@ -1084,11 +1169,31 @@ function TreeCraft({
             selectedIds,
             position: miniMapPosition,
             onPositionChange: onMiniMapPositionChange,
+            scale: zoomable ? transform.scale : void 0,
+            translate: zoomable ? { x: transform.x, y: transform.y } : void 0,
+            onNavigate: zoomable ? handleNavigate : void 0,
             onNodeClick: (node) => {
               onNodeClick?.(node);
               const el = viewportRef.current?.querySelector(`[data-tc-node-id="${node.id}"]`);
               if (el) {
-                el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+                if (zoomable) {
+                  const canvas = canvasRef.current;
+                  const viewport = viewportRef.current;
+                  if (canvas && viewport) {
+                    const nodeRect = el.getBoundingClientRect();
+                    const vRect = viewport.getBoundingClientRect();
+                    const deltaX = vRect.left + vRect.width / 2 - (nodeRect.left + nodeRect.width / 2);
+                    const deltaY = vRect.top + vRect.height / 2 - (nodeRect.top + nodeRect.height / 2);
+                    const nextX = transformRef.current.x + deltaX;
+                    const nextY = transformRef.current.y + deltaY;
+                    transformRef.current.x = nextX;
+                    transformRef.current.y = nextY;
+                    canvas.style.transform = `translate(${nextX}px, ${nextY}px) scale(${transformRef.current.scale})`;
+                    setTransform((prev) => ({ ...prev, x: nextX, y: nextY }));
+                  }
+                } else {
+                  el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+                }
               }
             }
           }
