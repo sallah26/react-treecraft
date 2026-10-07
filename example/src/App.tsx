@@ -212,14 +212,6 @@ export default function App() {
     tree.expandAll();
   };
 
-  const addRandomNode = () => {
-    const ids = tree.toFlat().map((n) => n.id);
-    const parentId = ids[Math.floor(Math.random() * ids.length)];
-    tree.addChild(parentId, {
-      name: `New Member ${Math.floor(Math.random() * 100)}`,
-      role: 'Team Member',
-    });
-  };
 
   return (
     <div className="app">
@@ -304,7 +296,6 @@ export default function App() {
 
           <button className="btn" onClick={tree.expandAll}>Expand All</button>
           <button className="btn" onClick={tree.collapseAll}>Collapse All</button>
-          <button className="btn" onClick={addRandomNode}>+ Add Node</button>
 
           {focusedId && (
             <button
