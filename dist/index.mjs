@@ -1,6 +1,6 @@
-import { useRef, useState, useCallback, useLayoutEffect, useEffect, useMemo } from 'react';
+import { useRef, useState, useCallback, useLayoutEffect, useMemo, useEffect } from 'react';
 import { jsx, jsxs } from 'react/jsx-runtime';
-import './index-VTBMRW75.css';
+import './index-5QPDOHJ2.css';
 
 // src/components/TreeCraft.tsx
 function DefaultCollapseBtn({ isCollapsed, onClick, orientation = "vertical" }) {
@@ -496,70 +496,311 @@ function buildTree(flat) {
   }
   return roots;
 }
-var MINI_NODE_SIZE = 6;
-var MINI_GAP_X = 18;
-var MINI_GAP_Y = 14;
-var CANVAS_W = 160;
-var CANVAS_H = 100;
+var CANVAS_WIDTH = 180;
+var CANVAS_HEIGHT = 116;
+var PADDING_X = 16;
+var PADDING_Y = 16;
+var POSITIONS = [
+  "bottom-right",
+  "bottom-left",
+  "top-left",
+  "top-right"
+];
 function MiniMap({
   data,
   containerRef,
+  orientation = "vertical",
   focusedNodeId,
+  highlightPathIds,
   selectedIds,
-  position = "bottom-right"
+  position = "bottom-right",
+  onPositionChange,
+  onNodeClick
 }) {
   const canvasRef = useRef(null);
-  const dataArr = Array.isArray(data) ? data : [data];
+  const [minimized, setMinimized] = useState(false);
+  const [hoveredNode, setHoveredNode] = useState(null);
+  const dataArr = useMemo(() => toArray(data), [data]);
+  const { layoutNodes, totalNodes } = useMemo(() => {
+    const nodes = [];
+    let leafCounter = 0;
+    function getNodeLabel(n) {
+      const d = n.data;
+      if (!d) return n.id;
+      return d.name || d.label || d.title || n.id;
+    }
+    function buildTemp(raw, depth = 0, parentId = null) {
+      const children = (raw.children ?? []).map((c) => buildTemp(c, depth + 1, raw.id));
+      const leafCount = children.length === 0 ? 1 : children.reduce((acc, c) => acc + c.leafCount, 0);
+      return { raw, id: raw.id, depth, parentId, children, leafCount, x: 0, y: 0 };
+    }
+    const roots = dataArr.map((r) => buildTemp(r, 0, null));
+    function assignCoordinates(temp) {
+      if (temp.children.length === 0) {
+        temp.x = leafCounter;
+        leafCounter += 1;
+      } else {
+        temp.children.forEach(assignCoordinates);
+        const first = temp.children[0];
+        const last = temp.children[temp.children.length - 1];
+        temp.x = (first.x + last.x) / 2;
+      }
+      temp.y = temp.depth;
+    }
+    roots.forEach(assignCoordinates);
+    function collect(temp) {
+      const isHorizontal = orientation === "horizontal";
+      nodes.push({
+        id: temp.id,
+        node: temp.raw,
+        label: getNodeLabel(temp.raw),
+        depth: temp.depth,
+        logicalX: isHorizontal ? temp.y : temp.x,
+        logicalY: isHorizontal ? temp.x : temp.y,
+        canvasX: 0,
+        canvasY: 0,
+        parentId: temp.parentId,
+        childrenIds: temp.children.map((c) => c.id),
+        isRoot: temp.depth === 0,
+        isLeaf: temp.children.length === 0
+      });
+      temp.children.forEach(collect);
+    }
+    roots.forEach(collect);
+    if (nodes.length === 0) return { layoutNodes: [], totalNodes: 0 };
+    const minX = Math.min(...nodes.map((n) => n.logicalX));
+    const maxX = Math.max(...nodes.map((n) => n.logicalX));
+    const minY = Math.min(...nodes.map((n) => n.logicalY));
+    const maxY = Math.max(...nodes.map((n) => n.logicalY));
+    const spanX = maxX - minX || 1;
+    const spanY = maxY - minY || 1;
+    const usableW = CANVAS_WIDTH - 2 * PADDING_X;
+    const usableH = CANVAS_HEIGHT - 2 * PADDING_Y;
+    nodes.forEach((n) => {
+      n.canvasX = PADDING_X + (n.logicalX - minX) / spanX * usableW;
+      n.canvasY = PADDING_Y + (n.logicalY - minY) / spanY * usableH;
+    });
+    return { layoutNodes: nodes, totalNodes: nodes.length };
+  }, [dataArr, orientation]);
   useEffect(() => {
+    if (minimized) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
-    const flat = flattenTree(dataArr);
-    const depthMap = {};
-    const depthCount = {};
-    flat.forEach((node) => {
-      let depth = 0;
-      let parentId = node.parentId;
-      while (parentId) {
-        depth++;
-        const parent = flat.find((n) => n.id === parentId);
-        parentId = parent?.parentId ?? null;
+    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 2 : 2;
+    canvas.width = CANVAS_WIDTH * dpr;
+    canvas.height = CANVAS_HEIGHT * dpr;
+    canvas.style.width = `${CANVAS_WIDTH}px`;
+    canvas.style.height = `${CANVAS_HEIGHT}px`;
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    const nodeMap = /* @__PURE__ */ new Map();
+    layoutNodes.forEach((n) => nodeMap.set(n.id, n));
+    layoutNodes.forEach((parent) => {
+      parent.childrenIds.forEach((childId) => {
+        const child = nodeMap.get(childId);
+        if (!child) return;
+        const isHighlighted = highlightPathIds?.has(parent.id) && highlightPathIds?.has(child.id);
+        ctx.beginPath();
+        if (orientation === "vertical") {
+          const midY = (parent.canvasY + child.canvasY) / 2;
+          ctx.moveTo(parent.canvasX, parent.canvasY);
+          ctx.lineTo(parent.canvasX, midY);
+          ctx.lineTo(child.canvasX, midY);
+          ctx.lineTo(child.canvasX, child.canvasY);
+        } else {
+          const midX = (parent.canvasX + child.canvasX) / 2;
+          ctx.moveTo(parent.canvasX, parent.canvasY);
+          ctx.lineTo(midX, parent.canvasY);
+          ctx.lineTo(midX, child.canvasY);
+          ctx.lineTo(child.canvasX, child.canvasY);
+        }
+        if (isHighlighted) {
+          ctx.strokeStyle = "#60a5fa";
+          ctx.lineWidth = 2;
+          ctx.shadowColor = "#60a5fa";
+          ctx.shadowBlur = 6;
+        } else {
+          ctx.strokeStyle = "rgba(148, 163, 184, 0.22)";
+          ctx.lineWidth = 1.2;
+          ctx.shadowBlur = 0;
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      });
+    });
+    layoutNodes.forEach((node) => {
+      const isFocused = focusedNodeId === node.id;
+      const isSelected = selectedIds?.has(node.id) ?? false;
+      const isOnPath = highlightPathIds?.has(node.id) ?? false;
+      const x = node.canvasX;
+      const y = node.canvasY;
+      if (isFocused) {
+        ctx.beginPath();
+        ctx.arc(x, y, 7.5, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(96, 165, 250, 0.25)";
+        ctx.fill();
+        ctx.strokeStyle = "#60a5fa";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = "#60a5fa";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+      } else if (isOnPath) {
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(56, 189, 248, 0.25)";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#38bdf8";
+        ctx.fill();
+      } else if (isSelected) {
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(167, 139, 250, 0.25)";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#a78bfa";
+        ctx.fill();
+      } else if (node.isRoot) {
+        ctx.beginPath();
+        ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#818cf8";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(129, 140, 248, 0.5)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(148, 163, 184, 0.75)";
+        ctx.fill();
       }
-      depthMap[node.id] = depth;
-      depthCount[depth] = (depthCount[depth] ?? 0) + 1;
     });
-    const maxDepth = Math.max(...Object.values(depthMap), 0);
-    const maxPerLevel = Math.max(...Object.values(depthCount), 1);
-    const scaleX = (CANVAS_W - MINI_NODE_SIZE) / Math.max(maxPerLevel * MINI_GAP_X, 1);
-    const scaleY = (CANVAS_H - MINI_NODE_SIZE) / Math.max(maxDepth * MINI_GAP_Y, 1);
-    const levelIdx = {};
-    flat.forEach((node) => {
-      const depth = depthMap[node.id];
-      levelIdx[depth] = (levelIdx[depth] ?? -1) + 1;
-      const x = levelIdx[depth] * MINI_GAP_X * scaleX + 4;
-      const y = depth * MINI_GAP_Y * scaleY + 4;
-      ctx.fillStyle = node.id === focusedNodeId ? "#3b82f6" : selectedIds?.has(node.id) ? "#8b5cf6" : "#94a3b8";
-      ctx.beginPath();
-      ctx.arc(x + MINI_NODE_SIZE / 2, y + MINI_NODE_SIZE / 2, MINI_NODE_SIZE / 2, 0, Math.PI * 2);
-      ctx.fill();
-    });
-  }, [data, focusedNodeId, selectedIds]);
-  const posStyle = {
-    position: "absolute",
-    zIndex: 100,
-    background: "rgba(15,23,42,0.85)",
-    border: "1px solid rgba(148,163,184,0.2)",
-    borderRadius: 8,
-    padding: 4,
-    backdropFilter: "blur(4px)",
-    ...position === "bottom-right" ? { bottom: 12, right: 12 } : {},
-    ...position === "top-right" ? { top: 12, right: 12 } : {},
-    ...position === "bottom-left" ? { bottom: 12, left: 12 } : {},
-    ...position === "top-left" ? { top: 12, left: 12 } : {}
+    ctx.restore();
+  }, [layoutNodes, focusedNodeId, highlightPathIds, selectedIds, orientation, minimized]);
+  const handleMouseMove = useCallback(
+    (e) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      let found = null;
+      for (const node of layoutNodes) {
+        const dx = node.canvasX - mouseX;
+        const dy = node.canvasY - mouseY;
+        if (Math.hypot(dx, dy) <= 10) {
+          found = node;
+          break;
+        }
+      }
+      if (found) {
+        setHoveredNode({ label: found.label, x: found.canvasX, y: found.canvasY });
+        canvas.style.cursor = "pointer";
+      } else {
+        setHoveredNode(null);
+        canvas.style.cursor = "crosshair";
+      }
+    },
+    [layoutNodes]
+  );
+  const handleClick = useCallback(
+    (e) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      for (const node of layoutNodes) {
+        const dx = node.canvasX - mouseX;
+        const dy = node.canvasY - mouseY;
+        if (Math.hypot(dx, dy) <= 10) {
+          onNodeClick?.(node.node);
+          break;
+        }
+      }
+    },
+    [layoutNodes, onNodeClick]
+  );
+  const handleCyclePosition = () => {
+    const currentIndex = POSITIONS.indexOf(position);
+    const nextPosition = POSITIONS[(currentIndex + 1) % POSITIONS.length];
+    onPositionChange?.(nextPosition);
   };
-  return /* @__PURE__ */ jsx("div", { style: posStyle, title: "Mini-map overview", children: /* @__PURE__ */ jsx("canvas", { ref: canvasRef, width: CANVAS_W, height: CANVAS_H }) });
+  const posClass = `tc-minimap--${position}`;
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      className: `tc-minimap ${posClass} ${minimized ? "tc-minimap--minimized" : ""}`,
+      title: "Tree Radar Overview",
+      children: [
+        /* @__PURE__ */ jsxs("div", { className: "tc-minimap__header", children: [
+          /* @__PURE__ */ jsxs("div", { className: "tc-minimap__badge", children: [
+            /* @__PURE__ */ jsx("span", { className: "tc-minimap__indicator" }),
+            /* @__PURE__ */ jsx("span", { className: "tc-minimap__title", children: "Radar" }),
+            /* @__PURE__ */ jsx("span", { className: "tc-minimap__count", children: totalNodes })
+          ] }),
+          /* @__PURE__ */ jsxs("div", { className: "tc-minimap__actions", children: [
+            /* @__PURE__ */ jsx(
+              "button",
+              {
+                className: "tc-minimap__btn",
+                onClick: handleCyclePosition,
+                title: `Current position: ${position}. Click to move corner.`,
+                children: /* @__PURE__ */ jsxs("svg", { width: "12", height: "12", viewBox: "0 0 12 12", fill: "none", children: [
+                  /* @__PURE__ */ jsx("rect", { x: "1.5", y: "1.5", width: "3.5", height: "3.5", rx: "1", fill: position === "top-left" ? "#60a5fa" : "currentColor", opacity: position === "top-left" ? 1 : 0.4 }),
+                  /* @__PURE__ */ jsx("rect", { x: "7", y: "1.5", width: "3.5", height: "3.5", rx: "1", fill: position === "top-right" ? "#60a5fa" : "currentColor", opacity: position === "top-right" ? 1 : 0.4 }),
+                  /* @__PURE__ */ jsx("rect", { x: "1.5", y: "7", width: "3.5", height: "3.5", rx: "1", fill: position === "bottom-left" ? "#60a5fa" : "currentColor", opacity: position === "bottom-left" ? 1 : 0.4 }),
+                  /* @__PURE__ */ jsx("rect", { x: "7", y: "7", width: "3.5", height: "3.5", rx: "1", fill: position === "bottom-right" ? "#60a5fa" : "currentColor", opacity: position === "bottom-right" ? 1 : 0.4 })
+                ] })
+              }
+            ),
+            /* @__PURE__ */ jsx(
+              "button",
+              {
+                className: "tc-minimap__btn",
+                onClick: () => setMinimized((m) => !m),
+                title: minimized ? "Expand Radar" : "Minimize Radar",
+                children: minimized ? /* @__PURE__ */ jsx("svg", { width: "12", height: "12", viewBox: "0 0 12 12", fill: "none", children: /* @__PURE__ */ jsx("path", { d: "M2 5L6 9L10 5", stroke: "currentColor", strokeWidth: "1.5", strokeLinecap: "round", strokeLinejoin: "round" }) }) : /* @__PURE__ */ jsx("svg", { width: "12", height: "12", viewBox: "0 0 12 12", fill: "none", children: /* @__PURE__ */ jsx("path", { d: "M2 7L6 3L10 7", stroke: "currentColor", strokeWidth: "1.5", strokeLinecap: "round", strokeLinejoin: "round" }) })
+              }
+            )
+          ] })
+        ] }),
+        !minimized && /* @__PURE__ */ jsxs("div", { className: "tc-minimap__canvas-container", children: [
+          /* @__PURE__ */ jsx(
+            "canvas",
+            {
+              ref: canvasRef,
+              className: "tc-minimap__canvas",
+              width: CANVAS_WIDTH,
+              height: CANVAS_HEIGHT,
+              onMouseMove: handleMouseMove,
+              onMouseLeave: () => setHoveredNode(null),
+              onClick: handleClick
+            }
+          ),
+          hoveredNode && /* @__PURE__ */ jsx(
+            "div",
+            {
+              className: "tc-minimap__tooltip",
+              style: { left: hoveredNode.x, top: hoveredNode.y },
+              children: hoveredNode.label
+            }
+          )
+        ] })
+      ]
+    }
+  );
 }
 function TreeCraft({
   data,
@@ -587,6 +828,7 @@ function TreeCraft({
   maxDepth,
   miniMap = false,
   miniMapPosition = "bottom-right",
+  onMiniMapPositionChange,
   // zoom/pan
   zoomable = false
 }) {
@@ -736,9 +978,13 @@ function TreeCraft({
           {
             data,
             containerRef,
+            orientation,
             focusedNodeId: activeFocusedId,
+            highlightPathIds,
             selectedIds,
-            position: miniMapPosition
+            position: miniMapPosition,
+            onPositionChange: onMiniMapPositionChange,
+            onNodeClick
           }
         )
       ]

@@ -78,6 +78,10 @@ export type AnimationPreset = 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip' | 'b
 
 export type Orientation = 'vertical' | 'horizontal';
 
+// ── 5b. MiniMap Position ────────────────────────────────────────────────────
+
+export type MiniMapPosition = 'top-right' | 'bottom-right' | 'top-left' | 'bottom-left';
+
 // ── 6. Main Component Props ────────────────────────────────────────────────
 
 export interface TreeCraftProps<T = Record<string, unknown>> {
@@ -215,7 +219,9 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
    */
   miniMap?: boolean;
   /** Mini-map corner position. @default 'bottom-right' */
-  miniMapPosition?: 'top-right' | 'bottom-right' | 'top-left' | 'bottom-left';
+  miniMapPosition?: MiniMapPosition;
+  /** Called when the user changes the mini-map corner position */
+  onMiniMapPositionChange?: (position: MiniMapPosition) => void;
 }
 
 // ── 7. useTreeCraft Hook Types ─────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { TreeCraft, TreeSearch, useTreeCraft } from 'react-treecraft';
-import type { TreeNode } from 'react-treecraft';
+import type { TreeNode, MiniMapPosition } from 'react-treecraft';
 
 // ── Custom Dropdown ───────────────────────────────────────────
 interface DropdownOption<T extends string> {
@@ -182,6 +182,13 @@ const DURATION_OPTIONS: DropdownOption<AnimDuration>[] = [
   { value: '1000', label: 'Glacial',description: '1000ms' },
 ];
 
+const MAP_POS_OPTIONS: DropdownOption<MiniMapPosition>[] = [
+  { value: 'bottom-right', label: '↘ Bottom Right', description: 'Lower right corner' },
+  { value: 'bottom-left',  label: '↙ Bottom Left',  description: 'Lower left corner' },
+  { value: 'top-right',    label: '↗ Top Right',    description: 'Upper right corner' },
+  { value: 'top-left',     label: '↖ Top Left',     description: 'Upper left corner' },
+];
+
 export default function App() {
   const tree = useTreeCraft<OrgNode>({ initialData: INITIAL_DATA });
 
@@ -191,6 +198,7 @@ export default function App() {
   const [selectPath, setSelectPath] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showMiniMap, setShowMiniMap] = useState(false);
+  const [miniMapPosition, setMiniMapPosition] = useState<MiniMapPosition>('bottom-right');
   const [zoomable, setZoomable] = useState(false);
   const [readOnly, setReadOnly] = useState(false);
   const [focusedId, setFocusedId] = useState<string | undefined>();
@@ -268,8 +276,17 @@ export default function App() {
             className={`btn ${showMiniMap ? 'btn--active' : ''}`}
             onClick={() => setShowMiniMap((m) => !m)}
           >
-            MiniMap
+            {showMiniMap ? '✓ MiniMap' : 'MiniMap'}
           </button>
+
+          {showMiniMap && (
+            <StyledDropdown<MiniMapPosition>
+              label="Map Pos"
+              value={miniMapPosition}
+              options={MAP_POS_OPTIONS}
+              onChange={setMiniMapPosition}
+            />
+          )}
 
           <button
             className={`btn ${zoomable ? 'btn--active' : ''}`}
@@ -341,7 +358,8 @@ export default function App() {
               focusedNodeId={focusedId}
               highlightPath={highlightPath}
               miniMap={showMiniMap}
-              miniMapPosition="bottom-right"
+              miniMapPosition={miniMapPosition}
+              onMiniMapPositionChange={setMiniMapPosition}
               zoomable={zoomable}
               onSelect={(ids) => setSelectedIds(ids)}
               onCollapseChange={(id, collapsed) => console.log('Collapse:', id, collapsed)}

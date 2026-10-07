@@ -40,4 +40,7 @@ export type {
   TreeCraftProps,
   UseTreeCraftOptions,
   UseTreeCraftReturn,
+  AnimationPreset,
+  Orientation,
+  MiniMapPosition,
 } from './types';

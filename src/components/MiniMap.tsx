@@ -1,105 +1,413 @@
 // ─────────────────────────────────────────────────────────────
-//  MiniMap — corner overview for large trees
+//  MiniMap — Glassmorphic interactive corner radar for trees
 // ─────────────────────────────────────────────────────────────
-import React, { useRef, useEffect } from 'react';
-import type { TreeNode } from '../types';
-import { flattenTree } from '../utils/tree-helpers';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
+import type { TreeNode, MiniMapPosition } from '../types';
+import { toArray } from '../utils/tree-helpers';
 
-interface MiniMapProps<T> {
+export interface MiniMapProps<T = Record<string, unknown>> {
   data: TreeNode<T> | TreeNode<T>[];
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef?: React.RefObject<HTMLDivElement>;
+  orientation?: 'vertical' | 'horizontal';
   focusedNodeId?: string;
+  highlightPathIds?: Set<string>;
   selectedIds?: Set<string>;
-  position?: 'top-right' | 'bottom-right' | 'top-left' | 'bottom-left';
+  position?: MiniMapPosition;
+  onPositionChange?: (position: MiniMapPosition) => void;
+  scale?: number;
+  translate?: { x: number; y: number };
+  onNavigate?: (x: number, y: number) => void;
+  onNodeClick?: (node: TreeNode<T>) => void;
 }
 
-const MINI_NODE_SIZE = 6;
-const MINI_GAP_X = 18;
-const MINI_GAP_Y = 14;
-const CANVAS_W = 160;
-const CANVAS_H = 100;
+interface LayoutItem<T> {
+  id: string;
+  node: TreeNode<T>;
+  label: string;
+  depth: number;
+  logicalX: number;
+  logicalY: number;
+  canvasX: number;
+  canvasY: number;
+  parentId: string | null;
+  childrenIds: string[];
+  isRoot: boolean;
+  isLeaf: boolean;
+}
 
-export function MiniMap<T>({
+const CANVAS_WIDTH = 180;
+const CANVAS_HEIGHT = 116;
+const PADDING_X = 16;
+const PADDING_Y = 16;
+
+const POSITIONS: MiniMapPosition[] = [
+  'bottom-right',
+  'bottom-left',
+  'top-left',
+  'top-right',
+];
+
+export function MiniMap<T = Record<string, unknown>>({
   data,
   containerRef,
+  orientation = 'vertical',
   focusedNodeId,
+  highlightPathIds,
   selectedIds,
   position = 'bottom-right',
+  onPositionChange,
+  onNodeClick,
 }: MiniMapProps<T>) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const dataArr = (Array.isArray(data) ? data : [data]) as TreeNode<T>[];
+  const [minimized, setMinimized] = useState(false);
+  const [hoveredNode, setHoveredNode] = useState<{ label: string; x: number; y: number } | null>(null);
 
+  const dataArr = useMemo(() => toArray(data), [data]);
+
+  // ── Calculate Hierarchical Coordinates ───────────────────────
+  const { layoutNodes, totalNodes } = useMemo(() => {
+    const nodes: LayoutItem<T>[] = [];
+    let leafCounter = 0;
+
+    function getNodeLabel(n: TreeNode<T>): string {
+      const d = n.data as Record<string, unknown> | undefined;
+      if (!d) return n.id;
+      return (d.name as string) || (d.label as string) || (d.title as string) || n.id;
+    }
+
+    interface TempNode {
+      raw: TreeNode<T>;
+      id: string;
+      depth: number;
+      parentId: string | null;
+      children: TempNode[];
+      leafCount: number;
+      x: number;
+      y: number;
+    }
+
+    function buildTemp(raw: TreeNode<T>, depth = 0, parentId: string | null = null): TempNode {
+      const children = (raw.children ?? []).map((c) => buildTemp(c, depth + 1, raw.id));
+      const leafCount = children.length === 0 ? 1 : children.reduce((acc, c) => acc + c.leafCount, 0);
+      return { raw, id: raw.id, depth, parentId, children, leafCount, x: 0, y: 0 };
+    }
+
+    const roots = dataArr.map((r) => buildTemp(r, 0, null));
+
+    function assignCoordinates(temp: TempNode) {
+      if (temp.children.length === 0) {
+        temp.x = leafCounter;
+        leafCounter += 1;
+      } else {
+        temp.children.forEach(assignCoordinates);
+        const first = temp.children[0];
+        const last = temp.children[temp.children.length - 1];
+        temp.x = (first.x + last.x) / 2;
+      }
+      temp.y = temp.depth;
+    }
+
+    roots.forEach(assignCoordinates);
+
+    function collect(temp: TempNode) {
+      const isHorizontal = orientation === 'horizontal';
+      nodes.push({
+        id: temp.id,
+        node: temp.raw,
+        label: getNodeLabel(temp.raw),
+        depth: temp.depth,
+        logicalX: isHorizontal ? temp.y : temp.x,
+        logicalY: isHorizontal ? temp.x : temp.y,
+        canvasX: 0,
+        canvasY: 0,
+        parentId: temp.parentId,
+        childrenIds: temp.children.map((c) => c.id),
+        isRoot: temp.depth === 0,
+        isLeaf: temp.children.length === 0,
+      });
+      temp.children.forEach(collect);
+    }
+
+    roots.forEach(collect);
+
+    if (nodes.length === 0) return { layoutNodes: [], totalNodes: 0 };
+
+    const minX = Math.min(...nodes.map((n) => n.logicalX));
+    const maxX = Math.max(...nodes.map((n) => n.logicalX));
+    const minY = Math.min(...nodes.map((n) => n.logicalY));
+    const maxY = Math.max(...nodes.map((n) => n.logicalY));
+
+    const spanX = maxX - minX || 1;
+    const spanY = maxY - minY || 1;
+
+    const usableW = CANVAS_WIDTH - 2 * PADDING_X;
+    const usableH = CANVAS_HEIGHT - 2 * PADDING_Y;
+
+    nodes.forEach((n) => {
+      n.canvasX = PADDING_X + ((n.logicalX - minX) / spanX) * usableW;
+      n.canvasY = PADDING_Y + ((n.logicalY - minY) / spanY) * usableH;
+    });
+
+    return { layoutNodes: nodes, totalNodes: nodes.length };
+  }, [dataArr, orientation]);
+
+  // ── Render High-DPI Canvas ───────────────────────────────────
   useEffect(() => {
+    if (minimized) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 2 : 2;
+    canvas.width = CANVAS_WIDTH * dpr;
+    canvas.height = CANVAS_HEIGHT * dpr;
+    canvas.style.width = `${CANVAS_WIDTH}px`;
+    canvas.style.height = `${CANVAS_HEIGHT}px`;
 
-    // Build a depth-map for positioning
-    const flat = flattenTree(dataArr);
-    const depthMap: Record<string, number> = {};
-    const depthCount: Record<number, number> = {};
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    flat.forEach((node) => {
-      // count depth by traversal order
-      let depth = 0;
-      let parentId = node.parentId;
-      while (parentId) {
-        depth++;
-        const parent = flat.find((n) => n.id === parentId);
-        parentId = parent?.parentId ?? null;
+    const nodeMap = new Map<string, LayoutItem<T>>();
+    layoutNodes.forEach((n) => nodeMap.set(n.id, n));
+
+    // 1. Draw Connector Lines
+    layoutNodes.forEach((parent) => {
+      parent.childrenIds.forEach((childId) => {
+        const child = nodeMap.get(childId);
+        if (!child) return;
+
+        const isHighlighted =
+          highlightPathIds?.has(parent.id) && highlightPathIds?.has(child.id);
+
+        ctx.beginPath();
+        if (orientation === 'vertical') {
+          const midY = (parent.canvasY + child.canvasY) / 2;
+          ctx.moveTo(parent.canvasX, parent.canvasY);
+          ctx.lineTo(parent.canvasX, midY);
+          ctx.lineTo(child.canvasX, midY);
+          ctx.lineTo(child.canvasX, child.canvasY);
+        } else {
+          const midX = (parent.canvasX + child.canvasX) / 2;
+          ctx.moveTo(parent.canvasX, parent.canvasY);
+          ctx.lineTo(midX, parent.canvasY);
+          ctx.lineTo(midX, child.canvasY);
+          ctx.lineTo(child.canvasX, child.canvasY);
+        }
+
+        if (isHighlighted) {
+          ctx.strokeStyle = '#60a5fa';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = '#60a5fa';
+          ctx.shadowBlur = 6;
+        } else {
+          ctx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
+          ctx.lineWidth = 1.2;
+          ctx.shadowBlur = 0;
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      });
+    });
+
+    // 2. Draw Nodes
+    layoutNodes.forEach((node) => {
+      const isFocused = focusedNodeId === node.id;
+      const isSelected = selectedIds?.has(node.id) ?? false;
+      const isOnPath = highlightPathIds?.has(node.id) ?? false;
+
+      const x = node.canvasX;
+      const y = node.canvasY;
+
+      if (isFocused) {
+        // Outer pulsing focus ring
+        ctx.beginPath();
+        ctx.arc(x, y, 7.5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(96, 165, 250, 0.25)';
+        ctx.fill();
+        ctx.strokeStyle = '#60a5fa';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Core dot
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#60a5fa';
+        ctx.fill();
+
+        // Inner white shine
+        ctx.beginPath();
+        ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+      } else if (isOnPath) {
+        // Glowing cyan path dot
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fill();
+      } else if (isSelected) {
+        // Glowing violet selected dot
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(167, 139, 250, 0.25)';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#a78bfa';
+        ctx.fill();
+      } else if (node.isRoot) {
+        // Root node
+        ctx.beginPath();
+        ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#818cf8';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(129, 140, 248, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      } else {
+        // Regular node
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.75)';
+        ctx.fill();
       }
-      depthMap[node.id] = depth;
-      depthCount[depth] = (depthCount[depth] ?? 0) + 1;
     });
 
-    const maxDepth = Math.max(...Object.values(depthMap), 0);
-    const maxPerLevel = Math.max(...Object.values(depthCount), 1);
+    ctx.restore();
+  }, [layoutNodes, focusedNodeId, highlightPathIds, selectedIds, orientation, minimized]);
 
-    const scaleX = (CANVAS_W - MINI_NODE_SIZE) / Math.max(maxPerLevel * MINI_GAP_X, 1);
-    const scaleY = (CANVAS_H - MINI_NODE_SIZE) / Math.max(maxDepth * MINI_GAP_Y, 1);
+  // ── Hover & Click Interactions ───────────────────────────────
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
 
-    const levelIdx: Record<number, number> = {};
+      let found: LayoutItem<T> | null = null;
+      for (const node of layoutNodes) {
+        const dx = node.canvasX - mouseX;
+        const dy = node.canvasY - mouseY;
+        if (Math.hypot(dx, dy) <= 10) {
+          found = node;
+          break;
+        }
+      }
 
-    flat.forEach((node) => {
-      const depth = depthMap[node.id];
-      levelIdx[depth] = (levelIdx[depth] ?? -1) + 1;
+      if (found) {
+        setHoveredNode({ label: found.label, x: found.canvasX, y: found.canvasY });
+        canvas.style.cursor = 'pointer';
+      } else {
+        setHoveredNode(null);
+        canvas.style.cursor = 'crosshair';
+      }
+    },
+    [layoutNodes],
+  );
 
-      const x = (levelIdx[depth] * MINI_GAP_X * scaleX) + 4;
-      const y = (depth * MINI_GAP_Y * scaleY) + 4;
+  const handleClick = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
 
-      ctx.fillStyle =
-        node.id === focusedNodeId
-          ? '#3b82f6'
-          : selectedIds?.has(node.id)
-          ? '#8b5cf6'
-          : '#94a3b8';
+      for (const node of layoutNodes) {
+        const dx = node.canvasX - mouseX;
+        const dy = node.canvasY - mouseY;
+        if (Math.hypot(dx, dy) <= 10) {
+          onNodeClick?.(node.node);
+          break;
+        }
+      }
+    },
+    [layoutNodes, onNodeClick],
+  );
 
-      ctx.beginPath();
-      ctx.arc(x + MINI_NODE_SIZE / 2, y + MINI_NODE_SIZE / 2, MINI_NODE_SIZE / 2, 0, Math.PI * 2);
-      ctx.fill();
-    });
-  }, [data, focusedNodeId, selectedIds]);
-
-  const posStyle: React.CSSProperties = {
-    position: 'absolute',
-    zIndex: 100,
-    background: 'rgba(15,23,42,0.85)',
-    border: '1px solid rgba(148,163,184,0.2)',
-    borderRadius: 8,
-    padding: 4,
-    backdropFilter: 'blur(4px)',
-    ...(position === 'bottom-right' ? { bottom: 12, right: 12 } : {}),
-    ...(position === 'top-right' ? { top: 12, right: 12 } : {}),
-    ...(position === 'bottom-left' ? { bottom: 12, left: 12 } : {}),
-    ...(position === 'top-left' ? { top: 12, left: 12 } : {}),
+  const handleCyclePosition = () => {
+    const currentIndex = POSITIONS.indexOf(position);
+    const nextPosition = POSITIONS[(currentIndex + 1) % POSITIONS.length];
+    onPositionChange?.(nextPosition);
   };
 
+  const posClass = `tc-minimap--${position}`;
+
   return (
-    <div style={posStyle} title="Mini-map overview">
-      <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H} />
+    <div
+      className={`tc-minimap ${posClass} ${minimized ? 'tc-minimap--minimized' : ''}`}
+      title="Tree Radar Overview"
+    >
+      <div className="tc-minimap__header">
+        <div className="tc-minimap__badge">
+          <span className="tc-minimap__indicator" />
+          <span className="tc-minimap__title">Radar</span>
+          <span className="tc-minimap__count">{totalNodes}</span>
+        </div>
+
+        <div className="tc-minimap__actions">
+          <button
+            className="tc-minimap__btn"
+            onClick={handleCyclePosition}
+            title={`Current position: ${position}. Click to move corner.`}
+          >
+            {/* 4-corner quadrant switcher icon */}
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <rect x="1.5" y="1.5" width="3.5" height="3.5" rx="1" fill={position === 'top-left' ? '#60a5fa' : 'currentColor'} opacity={position === 'top-left' ? 1 : 0.4}/>
+              <rect x="7" y="1.5" width="3.5" height="3.5" rx="1" fill={position === 'top-right' ? '#60a5fa' : 'currentColor'} opacity={position === 'top-right' ? 1 : 0.4}/>
+              <rect x="1.5" y="7" width="3.5" height="3.5" rx="1" fill={position === 'bottom-left' ? '#60a5fa' : 'currentColor'} opacity={position === 'bottom-left' ? 1 : 0.4}/>
+              <rect x="7" y="7" width="3.5" height="3.5" rx="1" fill={position === 'bottom-right' ? '#60a5fa' : 'currentColor'} opacity={position === 'bottom-right' ? 1 : 0.4}/>
+            </svg>
+          </button>
+
+          <button
+            className="tc-minimap__btn"
+            onClick={() => setMinimized((m) => !m)}
+            title={minimized ? 'Expand Radar' : 'Minimize Radar'}
+          >
+            {minimized ? (
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 5L6 9L10 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 7L6 3L10 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {!minimized && (
+        <div className="tc-minimap__canvas-container">
+          <canvas
+            ref={canvasRef}
+            className="tc-minimap__canvas"
+            width={CANVAS_WIDTH}
+            height={CANVAS_HEIGHT}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={() => setHoveredNode(null)}
+            onClick={handleClick}
+          />
+          {hoveredNode && (
+            <div
+              className="tc-minimap__tooltip"
+              style={{ left: hoveredNode.x, top: hoveredNode.y }}
+            >
+              {hoveredNode.label}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

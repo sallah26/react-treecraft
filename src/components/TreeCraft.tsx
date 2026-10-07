@@ -40,6 +40,7 @@ export function TreeCraft<T = Record<string, unknown>>({
   maxDepth,
   miniMap = false,
   miniMapPosition = 'bottom-right',
+  onMiniMapPositionChange,
   // zoom/pan
   zoomable = false,
 }: TreeCraftProps<T>) {
@@ -212,9 +213,13 @@ export function TreeCraft<T = Record<string, unknown>>({
         <MiniMap
           data={data}
           containerRef={containerRef}
+          orientation={orientation}
           focusedNodeId={activeFocusedId}
+          highlightPathIds={highlightPathIds}
           selectedIds={selectedIds}
           position={miniMapPosition}
+          onPositionChange={onMiniMapPositionChange}
+          onNodeClick={onNodeClick}
         />
       )}
     </div>

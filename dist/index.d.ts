@@ -57,6 +57,7 @@ interface TreeCraftTheme {
 }
 type AnimationPreset = 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip' | 'blur' | 'none';
 type Orientation = 'vertical' | 'horizontal';
+type MiniMapPosition = 'top-right' | 'bottom-right' | 'top-left' | 'bottom-left';
 interface TreeCraftProps<T = Record<string, unknown>> {
     /** The root node of the tree (or an array of root nodes for a forest) */
     data: TreeNode<T> | TreeNode<T>[];
@@ -165,7 +166,9 @@ interface TreeCraftProps<T = Record<string, unknown>> {
      */
     miniMap?: boolean;
     /** Mini-map corner position. @default 'bottom-right' */
-    miniMapPosition?: 'top-right' | 'bottom-right' | 'top-left' | 'bottom-left';
+    miniMapPosition?: MiniMapPosition;
+    /** Called when the user changes the mini-map corner position */
+    onMiniMapPositionChange?: (position: MiniMapPosition) => void;
 }
 interface UseTreeCraftOptions<T = Record<string, unknown>> {
     initialData: TreeNode<T> | TreeNode<T>[];
@@ -202,7 +205,7 @@ interface UseTreeCraftReturn<T = Record<string, unknown>> {
     setData: (data: TreeNode<T> | TreeNode<T>[]) => void;
 }
 
-declare function TreeCraft<T = Record<string, unknown>>({ data, renderNode, collapsible, defaultCollapsed, collapseDepth, renderCollapseButton, onCollapseChange, orientation, animationPreset, animationDuration, className, style, readOnly, selectable, selectPath, onSelect, onNodeClick, focusedNodeId, highlightPath, maxDepth, miniMap, miniMapPosition, zoomable, }: TreeCraftProps<T>): React.JSX.Element;
+declare function TreeCraft<T = Record<string, unknown>>({ data, renderNode, collapsible, defaultCollapsed, collapseDepth, renderCollapseButton, onCollapseChange, orientation, animationPreset, animationDuration, className, style, readOnly, selectable, selectPath, onSelect, onNodeClick, focusedNodeId, highlightPath, maxDepth, miniMap, miniMapPosition, onMiniMapPositionChange, zoomable, }: TreeCraftProps<T>): React.JSX.Element;
 
 interface TreeSearchProps<T> {
     /** Pass the same `data` you gave to <TreeCraft> */
@@ -216,14 +219,24 @@ interface TreeSearchProps<T> {
 }
 declare function TreeSearch<T>({ data, onResult, getLabel, placeholder, className, }: TreeSearchProps<T>): React.JSX.Element;
 
-interface MiniMapProps<T> {
+interface MiniMapProps<T = Record<string, unknown>> {
     data: TreeNode<T> | TreeNode<T>[];
-    containerRef: React.RefObject<HTMLDivElement>;
+    containerRef?: React.RefObject<HTMLDivElement>;
+    orientation?: 'vertical' | 'horizontal';
     focusedNodeId?: string;
+    highlightPathIds?: Set<string>;
     selectedIds?: Set<string>;
-    position?: 'top-right' | 'bottom-right' | 'top-left' | 'bottom-left';
+    position?: MiniMapPosition;
+    onPositionChange?: (position: MiniMapPosition) => void;
+    scale?: number;
+    translate?: {
+        x: number;
+        y: number;
+    };
+    onNavigate?: (x: number, y: number) => void;
+    onNodeClick?: (node: TreeNode<T>) => void;
 }
-declare function MiniMap<T>({ data, containerRef, focusedNodeId, selectedIds, position, }: MiniMapProps<T>): React.JSX.Element;
+declare function MiniMap<T = Record<string, unknown>>({ data, containerRef, orientation, focusedNodeId, highlightPathIds, selectedIds, position, onPositionChange, onNodeClick, }: MiniMapProps<T>): React.JSX.Element;
 
 interface Props {
     isCollapsed: boolean;
@@ -275,4 +288,4 @@ declare function buildTree<T extends {
     parentId: string | null;
 }>): TreeNode<T>[];
 
-export { DefaultCollapseBtn, type InternalNode, MiniMap, type RenderCollapseBtnProps, type RenderNodeProps, TreeConnector, TreeCraft, type TreeCraftProps, type TreeNode, TreeSearch, type UseTreeCraftOptions, type UseTreeCraftReturn, addChildNode, annotate, buildTree, collectAllIds, collectDescendantIds, findNode, flattenTree, generateId, getPath, moveNode, removeNode, toArray, updateNodeData, useTreeCraft };
+export { type AnimationPreset, DefaultCollapseBtn, type InternalNode, MiniMap, type MiniMapPosition, type Orientation, type RenderCollapseBtnProps, type RenderNodeProps, TreeConnector, TreeCraft, type TreeCraftProps, type TreeNode, TreeSearch, type UseTreeCraftOptions, type UseTreeCraftReturn, addChildNode, annotate, buildTree, collectAllIds, collectDescendantIds, findNode, flattenTree, generateId, getPath, moveNode, removeNode, toArray, updateNodeData, useTreeCraft };
