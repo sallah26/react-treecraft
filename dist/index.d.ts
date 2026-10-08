@@ -138,6 +138,22 @@ interface TreeCraftProps<T = Record<string, unknown>> {
      */
     highlightColor?: string;
     /**
+     * Spacing between side-by-side sibling nodes on the same level in pixels.
+     * In vertical orientation, this is the horizontal gap between sibling columns.
+     * In horizontal orientation, this is the vertical gap between sibling rows.
+     * Overrides theme.nodeGap and the --tc-node-gap CSS variable.
+     * @default 24
+     */
+    nodeGap?: number;
+    /**
+     * Spacing between parent node and child level in pixels.
+     * In vertical orientation, this is the vertical height of the connector zone.
+     * In horizontal orientation, this is the horizontal width of the connector zone.
+     * Overrides theme.levelGap and the --tc-level-gap CSS variable.
+     * @default 36
+     */
+    levelGap?: number;
+    /**
      * Animation style for expand/collapse.
      * @default 'fade'
      */

@@ -1201,9 +1201,31 @@ async function exportToSvg(element, options = {}) {
     el.classList.remove("tc-node-card--dragging");
     el.classList.remove("tc-node-card--drop-inside");
   });
+  const containerTcVars = [];
+  try {
+    const computed = window.getComputedStyle(element);
+    const tcProps = [
+      "--tc-line-color",
+      "--tc-line-width",
+      "--tc-line-radius",
+      "--tc-node-gap",
+      "--tc-level-gap",
+      "--tc-focus-color",
+      "--tc-focus-glow",
+      "--tc-selected-color"
+    ];
+    for (const prop of tcProps) {
+      const val = computed.getPropertyValue(prop);
+      if (val) containerTcVars.push(`${prop}: ${val};`);
+    }
+  } catch {
+  }
   const docStyles = collectDocumentStyles(safeForCanvas);
   const allStyles = `
     ${docStyles}
+    :root, .tc-tree-wrapper, .tc-forest, .tc-canvas {
+      ${containerTcVars.join(" ")}
+    }
     ${customCss}
     *, *::before, *::after {
       box-sizing: border-box;
@@ -1387,6 +1409,8 @@ function TreeCraftInternal({
   lineWidth,
   lineRadius,
   highlightColor,
+  nodeGap,
+  levelGap,
   theme,
   className = "",
   style,
@@ -1418,6 +1442,8 @@ function TreeCraftInternal({
   const resolvedLineWidth = lineWidth ?? theme?.lineWidth;
   const resolvedLineRadius = lineRadius ?? theme?.lineRadius ?? 8;
   const resolvedHighlightColor = highlightColor ?? theme?.highlightColor;
+  const resolvedNodeGap = nodeGap ?? theme?.nodeGap;
+  const resolvedLevelGap = levelGap ?? theme?.levelGap;
   const initCollapsedIds = useMemo(() => {
     const arr = toArray(data);
     const all = collectAllIds(arr);
@@ -1653,8 +1679,8 @@ function TreeCraftInternal({
     ...resolvedLineWidth !== void 0 ? { "--tc-line-width": `${resolvedLineWidth}px` } : {},
     ...resolvedLineRadius !== void 0 ? { "--tc-line-radius": `${resolvedLineRadius}px` } : {},
     ...resolvedHighlightColor ? { "--tc-focus-color": resolvedHighlightColor } : {},
-    ...theme?.nodeGap !== void 0 ? { "--tc-node-gap": `${theme.nodeGap}px` } : {},
-    ...theme?.levelGap !== void 0 ? { "--tc-level-gap": `${theme.levelGap}px` } : {},
+    ...resolvedNodeGap !== void 0 ? { "--tc-node-gap": `${resolvedNodeGap}px` } : {},
+    ...resolvedLevelGap !== void 0 ? { "--tc-level-gap": `${resolvedLevelGap}px` } : {},
     ...theme?.animationDuration !== void 0 ? { "--tc-animation-duration": `${theme.animationDuration}ms` } : {},
     ...animationDuration !== void 0 ? { "--tc-animation-duration": `${animationDuration}ms` } : {}
   };

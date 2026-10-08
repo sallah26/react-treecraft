@@ -1,0 +1,705 @@
+/* ─────────────────────────────────────────────────────────────
+   react-treecraft — Base Styles
+   All values are CSS variables → override anything from outside
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  --tc-line-color: #94a3b8;
+  --tc-line-width: 2px;
+  --tc-line-radius: 8px;
+  --tc-node-gap: 24px;
+  --tc-level-gap: 36px;
+  --tc-animation-duration: 200ms;
+  --tc-focus-color: #3b82f6;
+  --tc-focus-glow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+  --tc-selected-color: #8b5cf6;
+  --tc-collapse-btn-size: 22px;
+  --tc-collapse-btn-bg: #ffffff;
+  --tc-collapse-btn-border: #e2e8f0;
+  --tc-collapse-btn-hover-bg: #f8fafc;
+}
+
+/* ── Root container (fixed frame for positioning overlays) ── */
+.tc-root {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* ── Viewport scroll container ──────────────────────────────── */
+.tc-viewport {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tc-root--horizontal .tc-viewport {
+  flex-direction: row;
+}
+
+/* ── Canvas wrapper (centers tree horizontally & vertically) ── */
+.tc-canvas {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 100%;
+  min-height: 100%;
+  width: max-content;
+  box-sizing: border-box;
+  padding: 32px;
+  margin: auto;
+}
+
+.tc-root--horizontal .tc-canvas {
+  flex-direction: row;
+  min-height: 100%;
+  height: max-content;
+}
+
+.tc-tree-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.tc-root--horizontal .tc-tree-wrapper {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Forest (multi-root) ────────────────────────────────────── */
+.tc-forest {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--tc-node-gap);
+  justify-content: center;
+}
+
+.tc-root--horizontal .tc-forest {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* ── Vertical Branch ────────────────────────────────────────── */
+.tc-branch--vertical {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+}
+
+/* Subtree wrapper in vertical mode */
+.tc-subtree--vertical {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+/* Children row in vertical mode */
+.tc-children-row--vertical {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: center;
+  position: relative;
+  gap: var(--tc-node-gap);
+  margin: 0;
+  padding: 0;
+}
+
+/* Vertical connector zone */
+.tc-connector-zone--vertical {
+  width: 100%;
+  height: var(--tc-level-gap);
+  position: relative;
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Horizontal Branch ──────────────────────────────────────── */
+.tc-branch--horizontal {
+  display: flex;
+  flex-direction: row;
+  align-items: center; /* Vertically centers parent on the Y-axis */
+  position: relative;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+}
+
+/* Subtree wrapper in horizontal mode */
+.tc-subtree--horizontal {
+  display: flex;
+  flex-direction: row;
+  align-items: center; /* Keeps children column vertically centered */
+  height: 100%;
+}
+
+/* Children column in horizontal mode */
+.tc-children-row--horizontal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  position: relative;
+  gap: var(--tc-node-gap);
+  margin: 0;
+  padding: 0;
+}
+
+/* Horizontal connector zone */
+.tc-connector-zone--horizontal {
+  width: var(--tc-level-gap);
+  align-self: stretch;
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* ── SVG Connector Lines ────────────────────────────────────── */
+.tc-connector-svg {
+  pointer-events: none;
+}
+
+.tc-line--base {
+  stroke: var(--tc-line-color);
+  stroke-width: var(--tc-line-width);
+  transition: stroke var(--tc-animation-duration) ease, stroke-width var(--tc-animation-duration) ease;
+}
+
+.tc-line--highlighted {
+  stroke: var(--tc-focus-color);
+  stroke-width: calc(var(--tc-line-width) + 0.5px);
+  filter: drop-shadow(0 0 5px var(--tc-focus-color));
+  transition: stroke var(--tc-animation-duration) ease, filter var(--tc-animation-duration) ease;
+}
+
+/* ── Connector Line Patterns ────────────────────────────────── */
+.tc-line--solid {
+  stroke-dasharray: none;
+}
+
+.tc-line--dashed {
+  stroke-dasharray: 6 6;
+}
+
+.tc-line--dotted {
+  stroke-dasharray: 2 6;
+  stroke-linecap: round;
+}
+
+.tc-line--flow {
+  stroke-dasharray: 8 8;
+  animation: tc-line-flow 1.2s linear infinite;
+}
+
+@keyframes tc-line-flow {
+  from {
+    stroke-dashoffset: 16;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ── Node wrapper ───────────────────────────────────────────── */
+.tc-node-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.tc-node-wrapper--focused .tc-node-inner {
+  box-shadow: var(--tc-focus-glow);
+  outline: var(--tc-line-width) solid var(--tc-focus-color);
+  border-radius: 8px;
+}
+
+.tc-node-wrapper--selected .tc-node-inner {
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
+  outline: var(--tc-line-width) solid var(--tc-selected-color);
+  border-radius: 8px;
+}
+
+.tc-node-wrapper--on-path > .tc-node-inner {
+  opacity: 1;
+}
+
+.tc-node-wrapper:not(.tc-node-wrapper--on-path).tc-has-focus-path {
+  opacity: 0.35;
+  transition: opacity var(--tc-animation-duration) ease;
+}
+
+.tc-node-inner {
+  cursor: default;
+  transition:
+    box-shadow var(--tc-animation-duration) ease,
+    outline var(--tc-animation-duration) ease;
+}
+
+.tc-node-inner--selectable {
+  cursor: pointer;
+}
+
+/* ── Collapse toggle button ─────────────────────────────────── */
+.tc-collapse-btn {
+  position: absolute;
+  bottom: calc(var(--tc-collapse-btn-size) / -2);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  width: var(--tc-collapse-btn-size);
+  height: var(--tc-collapse-btn-size);
+  border-radius: 50%;
+  border: var(--tc-line-width) solid var(--tc-collapse-btn-border);
+  background: var(--tc-collapse-btn-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background var(--tc-animation-duration) ease,
+    transform var(--tc-animation-duration) ease,
+    box-shadow var(--tc-animation-duration) ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  outline: none;
+  padding: 0;
+}
+
+.tc-collapse-btn:hover {
+  background: var(--tc-collapse-btn-hover-bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  transform: translateX(-50%) scale(1.12);
+}
+
+.tc-collapse-btn:active {
+  transform: translateX(-50%) scale(0.95);
+}
+
+.tc-collapse-btn svg {
+  transition: transform var(--tc-animation-duration) ease;
+  width: 11px;
+  height: 11px;
+  color: #64748b;
+}
+
+.tc-collapse-btn--expanded svg {
+  transform: rotate(180deg);
+}
+
+/* ── Horizontal collapse btn ─────────────────────────────────── */
+.tc-root--horizontal .tc-collapse-btn {
+  bottom: auto;
+  right: calc(var(--tc-collapse-btn-size) / -2);
+  left: auto;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.tc-root--horizontal .tc-collapse-btn:hover {
+  transform: translateY(-50%) scale(1.12);
+}
+
+.tc-root--horizontal .tc-collapse-btn svg {
+  transform: rotate(-90deg);
+}
+
+.tc-root--horizontal .tc-collapse-btn--expanded-h svg {
+  transform: rotate(90deg);
+}
+
+/* ── Animations ─────────────────────────────────────────────── */
+
+/* fade */
+.tc-anim-fade-enter {
+  animation: tc-fade-in var(--tc-animation-duration) ease forwards;
+}
+@keyframes tc-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* slide (from top) */
+.tc-anim-slide-enter {
+  animation: tc-slide-in var(--tc-animation-duration) ease forwards;
+}
+@keyframes tc-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* zoom */
+.tc-anim-zoom-enter {
+  animation: tc-zoom-in var(--tc-animation-duration) ease forwards;
+}
+@keyframes tc-zoom-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* bounce */
+.tc-anim-bounce-enter {
+  animation: tc-bounce-in var(--tc-animation-duration) cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes tc-bounce-in {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* flip */
+.tc-anim-flip-enter {
+  animation: tc-flip-in var(--tc-animation-duration) ease forwards;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+@keyframes tc-flip-in {
+  from { opacity: 0; transform: perspective(400px) rotateY(-90deg); }
+  to   { opacity: 1; transform: perspective(400px) rotateY(0deg); }
+}
+
+/* blur */
+.tc-anim-blur-enter {
+  animation: tc-blur-in var(--tc-animation-duration) ease forwards;
+}
+@keyframes tc-blur-in {
+  from { opacity: 0; filter: blur(8px); transform: scale(0.97); }
+  to   { opacity: 1; filter: blur(0px); transform: scale(1); }
+}
+
+/* ── MiniMap ─────────────────────────────────────────────────── */
+.tc-minimap {
+  position: absolute;
+  z-index: 100;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 8px 10px 10px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  user-select: none;
+  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tc-minimap--bottom-right { bottom: 16px; right: 16px; }
+.tc-minimap--top-right    { top: 16px; right: 16px; }
+.tc-minimap--bottom-left  { bottom: 16px; left: 16px; }
+.tc-minimap--top-left     { top: 16px; left: 16px; }
+
+.tc-minimap--minimized {
+  padding: 6px 10px;
+}
+
+.tc-minimap__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tc-minimap__badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tc-minimap__indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: tc-radar-pulse 2s infinite;
+}
+
+@keyframes tc-radar-pulse {
+  0%   { transform: scale(0.9); opacity: 0.7; }
+  50%  { transform: scale(1.2); opacity: 1; box-shadow: 0 0 10px #10b981; }
+  100% { transform: scale(0.9); opacity: 0.7; }
+}
+
+.tc-minimap__title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+.tc-minimap__count {
+  font-size: 10px;
+  font-weight: 600;
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.tc-minimap__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tc-minimap__btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 120ms ease;
+}
+
+.tc-minimap__btn:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tc-minimap__canvas-container {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(10, 15, 29, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: crosshair;
+}
+
+.tc-minimap__canvas {
+  display: block;
+}
+
+.tc-minimap__tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 10;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  color: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transform: translate(-50%, -120%);
+  transition: opacity 100ms ease;
+}
+
+/* ── Drag & Drop Interactions ─────────────────────────────────── */
+.tc-node-card--draggable {
+  cursor: grab;
+  user-select: none;
+}
+
+.tc-node-card--dragging {
+  opacity: 0.45;
+  transform: scale(0.96);
+  cursor: grabbing;
+}
+
+.tc-node-card--drop-inside {
+  box-shadow: 0 0 0 2px #38bdf8, 0 0 22px rgba(56, 189, 248, 0.45) !important;
+  background: rgba(14, 165, 233, 0.15) !important;
+  transition: box-shadow 150ms ease, background 150ms ease;
+}
+
+.tc-drop-indicator {
+  position: absolute;
+  pointer-events: none;
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8, 0 0 16px rgba(56, 189, 248, 0.5);
+  border-radius: 999px;
+  z-index: 50;
+  transition: all 120ms ease;
+}
+
+/* Vertical tree: siblings are placed side by side along X */
+.tc-branch--vertical .tc-drop-indicator--before {
+  top: 0;
+  bottom: 0;
+  left: -8px;
+  width: 3px;
+}
+
+.tc-branch--vertical .tc-drop-indicator--after {
+  top: 0;
+  bottom: 0;
+  right: -8px;
+  width: 3px;
+}
+
+/* Horizontal tree: siblings are placed vertically along Y */
+.tc-branch--horizontal .tc-drop-indicator--before {
+  left: 0;
+  right: 0;
+  top: -8px;
+  height: 3px;
+}
+
+.tc-branch--horizontal .tc-drop-indicator--after {
+  left: 0;
+  right: 0;
+  bottom: -8px;
+  height: 3px;
+}
+
+/* ── TreeExport Component ─────────────────────────────────────── */
+.tc-export {
+  position: relative;
+  display: inline-block;
+  font-family: inherit;
+  z-index: 40;
+}
+
+.tc-export-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(30, 41, 59, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: all 160ms cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.tc-export-trigger:hover:not(:disabled) {
+  background: rgba(51, 65, 85, 0.95);
+  border-color: rgba(99, 102, 241, 0.45);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+.tc-export-trigger--open {
+  background: rgba(51, 65, 85, 0.95);
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+}
+
+.tc-export-trigger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tc-export-icon {
+  flex-shrink: 0;
+  color: #818cf8;
+}
+
+.tc-export-chevron {
+  flex-shrink: 0;
+  color: #94a3b8;
+  transition: transform 160ms ease;
+}
+
+.tc-export-chevron--open {
+  transform: rotate(180deg);
+}
+
+.tc-export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(99, 102, 241, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 100;
+  animation: tc-export-fade-in 140ms ease-out;
+}
+
+@keyframes tc-export-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tc-export-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #cbd5e1;
+  text-align: left;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.tc-export-item:hover {
+  background: rgba(99, 102, 241, 0.15);
+  color: #ffffff;
+}
+
+.tc-export-item-icon {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.tc-export-item-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.tc-export-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.tc-export-item-subtitle {
+  font-size: 10px;
+  color: #94a3b8;
+  margin-top: 1px;
+}

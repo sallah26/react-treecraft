@@ -14,5 +14,5 @@ export default defineConfig({
   loader: {
     '.css': 'copy',
   },
-  onSuccess: 'echo ✅ react-treecraft built successfully!',
+  onSuccess: 'cp src/styles/index.css dist/index.css && echo ✅ react-treecraft built successfully!',
 });
