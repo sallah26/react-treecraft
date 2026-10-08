@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { TreeCraft, TreeSearch, useTreeCraft } from 'react-treecraft';
-import type { TreeNode, MiniMapPosition } from 'react-treecraft';
+import { TreeCraft, TreeSearch, TreeExport, useTreeCraft } from 'react-treecraft';
+import type { TreeNode, MiniMapPosition, TreeCraftRef, ExportFormat } from 'react-treecraft';
 
 // ── Custom Dropdown ───────────────────────────────────────────
 interface DropdownOption<T extends string> {
@@ -141,7 +141,7 @@ function OrgNodeCard({
   isSelected: boolean;
   isFocused: boolean;
 }) {
-  const initials = name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+  const initials = name ? name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() : 'TC';
   const classes = [
     'node-card',
     isRoot ? 'node-card--root' : '',
@@ -153,8 +153,8 @@ function OrgNodeCard({
   return (
     <div className={classes}>
       <div className="node-card__avatar">{initials}</div>
-      <div className="node-card__name">{name}</div>
-      <div className="node-card__role">{role}</div>
+      <div className="node-card__name">{name || 'Unnamed Node'}</div>
+      <div className="node-card__role">{role || 'Role'}</div>
     </div>
   );
 }
@@ -191,6 +191,8 @@ const MAP_POS_OPTIONS: DropdownOption<MiniMapPosition>[] = [
 
 export default function App() {
   const tree = useTreeCraft<OrgNode>({ initialData: INITIAL_DATA });
+  const treeRef = useRef<TreeCraftRef>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [orientation, setOrientation] = useState<Orientation>('vertical');
   const [animPreset, setAnimPreset] = useState<AnimPreset>('fade');
@@ -204,8 +206,14 @@ export default function App() {
   const [readOnly, setReadOnly] = useState(false);
   const [focusedId, setFocusedId] = useState<string | undefined>();
   const [highlightPath, setHighlightPath] = useState<string | undefined>();
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const selectedCount = selectedIds.length;
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   const handleSearch = (id: string) => {
     setFocusedId(id);
@@ -213,6 +221,28 @@ export default function App() {
     tree.expandAll();
   };
 
+  const handleExportSuccess = (format: ExportFormat) => {
+    showToast(`✓ Exported ${format.toUpperCase()} successfully!`);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        tree.importJson(text);
+        showToast('✓ Tree JSON loaded successfully!');
+      } catch (err) {
+        alert('Invalid JSON file format. Please upload a valid TreeCraft JSON export.');
+      }
+    };
+    reader.readAsText(file);
+    // Reset file input value
+    e.target.value = '';
+  };
 
   return (
     <div className="app">
@@ -222,7 +252,10 @@ export default function App() {
           <TreeSearch
             data={tree.data}
             onResult={handleSearch}
-            getLabel={(n) => `${(n.data as OrgNode).name} — ${(n.data as OrgNode).role}`}
+            getLabel={(n) => {
+              const d = n.data as OrgNode;
+              return `${d.name ?? 'Node'} — ${d.role ?? ''}`;
+            }}
             placeholder="Search members…"
           />
 
@@ -305,6 +338,31 @@ export default function App() {
           <button className="btn" onClick={tree.expandAll}>Expand All</button>
           <button className="btn" onClick={tree.collapseAll}>Collapse All</button>
 
+          {/* Export companion component */}
+          <TreeExport
+            treeRef={treeRef}
+            data={tree.data}
+            filename="org-structure"
+            backgroundColor="#0f172a"
+            onExport={handleExportSuccess}
+          />
+
+          {/* Import JSON button */}
+          <button
+            className="btn"
+            onClick={() => fileInputRef.current?.click()}
+            title="Import tree structure from a JSON file"
+          >
+            📥 Import JSON
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,application/json"
+            style={{ display: 'none' }}
+            onChange={handleFileUpload}
+          />
+
           {focusedId && (
             <button
               className="btn btn--danger"
@@ -315,6 +373,27 @@ export default function App() {
           )}
         </div>
       </header>
+
+      {toastMessage && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 64,
+            right: 24,
+            background: 'rgba(16, 185, 129, 0.95)',
+            color: '#ffffff',
+            padding: '8px 16px',
+            borderRadius: 8,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+            zIndex: 9999,
+            fontWeight: 600,
+            fontSize: 13,
+            animation: 'tc-export-fade-in 150ms ease-out',
+          }}
+        >
+          {toastMessage}
+        </div>
+      )}
 
       <main className="canvas">
         <div className="canvas__inner">
@@ -346,6 +425,7 @@ export default function App() {
 
           <div className="tree-container" style={{ height: '70vh' }}>
             <TreeCraft<OrgNode>
+              ref={treeRef}
               data={tree.data}
               orientation={orientation}
               animationPreset={animPreset}
@@ -368,16 +448,19 @@ export default function App() {
               }}
               onSelect={(ids) => setSelectedIds(ids)}
               onNodeClick={(node) => console.log('Node clicked:', node.id)}
-              renderNode={({ node, isRoot, isLeaf, isSelected, isFocused }) => (
-                <OrgNodeCard
-                  name={(node.data as OrgNode).name}
-                  role={(node.data as OrgNode).role}
-                  isRoot={isRoot}
-                  isLeaf={isLeaf}
-                  isSelected={isSelected}
-                  isFocused={isFocused}
-                />
-              )}
+              renderNode={({ node, isRoot, isLeaf, isSelected, isFocused }) => {
+                const d = node.data as OrgNode;
+                return (
+                  <OrgNodeCard
+                    name={d?.name ?? ''}
+                    role={d?.role ?? ''}
+                    isRoot={isRoot}
+                    isLeaf={isLeaf}
+                    isSelected={isSelected}
+                    isFocused={isFocused}
+                  />
+                );
+              }}
             />
           </div>
         </div>
@@ -385,5 +468,3 @@ export default function App() {
     </div>
   );
 }
-
-

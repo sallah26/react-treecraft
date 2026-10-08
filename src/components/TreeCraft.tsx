@@ -1,55 +1,72 @@
-// ─────────────────────────────────────────────────────────────
-//  TreeCraft — main orchestrator component
-// ─────────────────────────────────────────────────────────────
 import React, {
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
+  useImperativeHandle,
+  forwardRef,
+  ForwardedRef,
 } from 'react';
-import type { TreeCraftProps } from '../types';
+import type {
+  TreeCraftProps,
+  TreeCraftRef,
+  PngExportOptions,
+  SvgExportOptions,
+  JsonExportOptions,
+} from '../types';
 import { TreeBranch } from './TreeBranch';
 import { MiniMap } from './MiniMap';
 import { annotate, toArray, collectAllIds, getPath, findNode, collectDescendantIds } from '../utils/tree-helpers';
+import {
+  exportToPng,
+  downloadPng,
+  exportToSvg,
+  downloadSvg,
+  exportToJson,
+  downloadJson,
+} from '../utils/export';
 import '../styles/index.css';
 
-export function TreeCraft<T = Record<string, unknown>>({
-  data,
-  renderNode,
-  // collapse
-  collapsible = true,
-  defaultCollapsed = false,
-  collapsedIds: propCollapsedIds,
-  collapseDepth,
-  renderCollapseButton,
-  onCollapseChange,
-  // styling
-  orientation = 'vertical',
-  animationPreset = 'fade',
-  animationDuration,
-  className = '',
-  style,
-  // features
-  readOnly = false,
-  selectable = false,
-  selectPath = false,
-  onSelect,
-  onNodeClick,
-  focusedNodeId,
-  highlightPath,
-  maxDepth,
-  miniMap = false,
-  miniMapPosition = 'bottom-right',
-  onMiniMapPositionChange,
-  // drag and drop
-  draggableNodes = false,
-  draggable = false,
-  onNodeMove,
-  canDrop,
-  // zoom/pan
-  zoomable = false,
-}: TreeCraftProps<T>) {
+function TreeCraftInternal<T = Record<string, unknown>>(
+  {
+    data,
+    renderNode,
+    // collapse
+    collapsible = true,
+    defaultCollapsed = false,
+    collapsedIds: propCollapsedIds,
+    collapseDepth,
+    renderCollapseButton,
+    onCollapseChange,
+    // styling
+    orientation = 'vertical',
+    animationPreset = 'fade',
+    animationDuration,
+    className = '',
+    style,
+    // features
+    readOnly = false,
+    selectable = false,
+    selectPath = false,
+    onSelect,
+    onNodeClick,
+    focusedNodeId,
+    highlightPath,
+    maxDepth,
+    miniMap = false,
+    miniMapPosition = 'bottom-right',
+    onMiniMapPositionChange,
+    // drag and drop
+    draggableNodes = false,
+    draggable = false,
+    onNodeMove,
+    canDrop,
+    // zoom/pan
+    zoomable = false,
+  }: TreeCraftProps<T>,
+  ref: ForwardedRef<TreeCraftRef>,
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggable = draggableNodes || draggable;
 
@@ -270,6 +287,49 @@ export function TreeCraft<T = Record<string, unknown>>({
     setTransform({ scale: currentScale, x: nextX, y: nextY });
   }, []);
 
+  // ── Imperative Ref API ─────────────────────────────────────
+  useImperativeHandle(
+    ref,
+    () => ({
+      get container() {
+        return containerRef.current;
+      },
+      get viewport() {
+        return viewportRef.current;
+      },
+      get canvas() {
+        return canvasRef.current;
+      },
+      exportPng: async (options?: PngExportOptions) => {
+        const el = canvasRef.current ?? containerRef.current;
+        if (!el) throw new Error('[react-treecraft] Tree DOM element not found.');
+        return exportToPng(el, options);
+      },
+      downloadPng: async (filename?: string, options?: PngExportOptions) => {
+        const el = canvasRef.current ?? containerRef.current;
+        if (!el) throw new Error('[react-treecraft] Tree DOM element not found.');
+        return downloadPng(el, filename, options);
+      },
+      exportSvg: async (options?: SvgExportOptions) => {
+        const el = canvasRef.current ?? containerRef.current;
+        if (!el) throw new Error('[react-treecraft] Tree DOM element not found.');
+        return exportToSvg(el, options);
+      },
+      downloadSvg: async (filename?: string, options?: SvgExportOptions) => {
+        const el = canvasRef.current ?? containerRef.current;
+        if (!el) throw new Error('[react-treecraft] Tree DOM element not found.');
+        return downloadSvg(el, filename, options);
+      },
+      exportJson: (options?: JsonExportOptions) => {
+        return exportToJson(data, options);
+      },
+      downloadJson: (filename?: string, options?: JsonExportOptions) => {
+        downloadJson(data, filename, options);
+      },
+    }),
+    [data],
+  );
+
   // ── Annotate data ─────────────────────────────────────────
   const annotatedNodes = useMemo(() => annotate(toArray(data)), [data]);
 
@@ -396,3 +456,7 @@ export function TreeCraft<T = Record<string, unknown>>({
     </div>
   );
 }
+
+export const TreeCraft = forwardRef(TreeCraftInternal) as <T = Record<string, unknown>>(
+  props: TreeCraftProps<T> & { ref?: React.Ref<TreeCraftRef> },
+) => React.ReactElement;

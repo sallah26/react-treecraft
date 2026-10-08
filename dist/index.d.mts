@@ -1,4 +1,4 @@
-import React, { MouseEvent, ReactNode, CSSProperties } from 'react';
+import React$1, { MouseEvent, ReactNode, CSSProperties } from 'react';
 
 /** The universal tree node shape. T = whatever data your app needs. */
 interface TreeNode<T = Record<string, unknown>> {
@@ -233,9 +233,76 @@ interface UseTreeCraftReturn<T = Record<string, unknown>> {
     }>;
     /** Replace the entire tree */
     setData: (data: TreeNode<T> | TreeNode<T>[]) => void;
+    /** Export tree data as JSON string */
+    exportJson: (options?: JsonExportOptions) => string;
+    /** Download tree data as JSON file */
+    downloadJson: (filename?: string, options?: JsonExportOptions) => void;
+    /** Import and set tree from a JSON string */
+    importJson: (jsonString: string) => void;
+}
+type ExportFormat = 'png' | 'svg' | 'json';
+interface SvgExportOptions {
+    /** Background color for the exported image. Default: 'transparent' */
+    backgroundColor?: string;
+    /** Padding in pixels around the tree diagram. Default: 32 */
+    padding?: number;
+    /** Title for the SVG element. Default: 'Tree Diagram' */
+    title?: string;
+    /** Extra CSS styles to inline in the exported SVG */
+    customCss?: string;
+}
+interface PngExportOptions extends SvgExportOptions {
+    /** Resolution multiplier / DPI scale. Default: 2 */
+    scale?: number;
+    /** Image quality (0 to 1). Default: 1 */
+    quality?: number;
+}
+interface JsonExportOptions {
+    /** Indentation spacing for JSON output. Default: 2 */
+    indent?: number;
+}
+interface TreeCraftRef {
+    /** The root container element */
+    container: HTMLDivElement | null;
+    /** The viewport element */
+    viewport: HTMLDivElement | null;
+    /** The canvas element */
+    canvas: HTMLDivElement | null;
+    /** Export current tree as high-resolution PNG data URL */
+    exportPng: (options?: PngExportOptions) => Promise<string>;
+    /** Download current tree as PNG file */
+    downloadPng: (filename?: string, options?: PngExportOptions) => Promise<void>;
+    /** Export current tree as standalone SVG string */
+    exportSvg: (options?: SvgExportOptions) => Promise<string>;
+    /** Download current tree as SVG file */
+    downloadSvg: (filename?: string, options?: SvgExportOptions) => Promise<void>;
+    /** Export tree data as JSON string */
+    exportJson: (options?: JsonExportOptions) => string;
+    /** Download tree data as JSON file */
+    downloadJson: (filename?: string, options?: JsonExportOptions) => void;
+}
+interface TreeExportProps<T = Record<string, unknown>> {
+    /** Reference to the TreeCraft instance or container element */
+    treeRef?: React.RefObject<TreeCraftRef | null> | TreeCraftRef | React.RefObject<HTMLElement | null>;
+    /** Tree data (for JSON export) */
+    data?: TreeNode<T> | TreeNode<T>[];
+    /** Default filename prefix without extension */
+    filename?: string;
+    /** Additional CSS class */
+    className?: string;
+    /** Inline style overrides */
+    style?: CSSProperties;
+    /** Default background color for image exports */
+    backgroundColor?: string;
+    /** Default scale for PNG export */
+    scale?: number;
+    /** Callback triggered when an export completes */
+    onExport?: (format: ExportFormat) => void;
 }
 
-declare function TreeCraft<T = Record<string, unknown>>({ data, renderNode, collapsible, defaultCollapsed, collapsedIds: propCollapsedIds, collapseDepth, renderCollapseButton, onCollapseChange, orientation, animationPreset, animationDuration, className, style, readOnly, selectable, selectPath, onSelect, onNodeClick, focusedNodeId, highlightPath, maxDepth, miniMap, miniMapPosition, onMiniMapPositionChange, draggableNodes, draggable, onNodeMove, canDrop, zoomable, }: TreeCraftProps<T>): React.JSX.Element;
+declare const TreeCraft: <T = Record<string, unknown>>(props: TreeCraftProps<T> & {
+    ref?: React$1.Ref<TreeCraftRef>;
+}) => React$1.ReactElement;
 
 interface TreeSearchProps<T> {
     /** Pass the same `data` you gave to <TreeCraft> */
@@ -247,11 +314,11 @@ interface TreeSearchProps<T> {
     placeholder?: string;
     className?: string;
 }
-declare function TreeSearch<T>({ data, onResult, getLabel, placeholder, className, }: TreeSearchProps<T>): React.JSX.Element;
+declare function TreeSearch<T>({ data, onResult, getLabel, placeholder, className, }: TreeSearchProps<T>): React$1.JSX.Element;
 
 interface MiniMapProps<T = Record<string, unknown>> {
     data: TreeNode<T> | TreeNode<T>[];
-    containerRef?: React.RefObject<HTMLDivElement>;
+    containerRef?: React$1.RefObject<HTMLDivElement>;
     orientation?: 'vertical' | 'horizontal';
     focusedNodeId?: string;
     highlightPathIds?: Set<string>;
@@ -266,22 +333,24 @@ interface MiniMapProps<T = Record<string, unknown>> {
     onNavigate?: (x: number, y: number) => void;
     onNodeClick?: (node: TreeNode<T>) => void;
 }
-declare function MiniMap<T = Record<string, unknown>>({ data, containerRef, orientation, focusedNodeId, highlightPathIds, selectedIds, position, onPositionChange, onNodeClick, scale, translate, onNavigate, }: MiniMapProps<T>): React.JSX.Element;
+declare function MiniMap<T = Record<string, unknown>>({ data, containerRef, orientation, focusedNodeId, highlightPathIds, selectedIds, position, onPositionChange, onNodeClick, scale, translate, onNavigate, }: MiniMapProps<T>): React$1.JSX.Element;
 
 interface Props {
     isCollapsed: boolean;
-    onClick: (e: React.MouseEvent) => void;
+    onClick: (e: React$1.MouseEvent) => void;
     orientation?: 'vertical' | 'horizontal';
 }
-declare function DefaultCollapseBtn({ isCollapsed, onClick, orientation }: Props): React.JSX.Element;
+declare function DefaultCollapseBtn({ isCollapsed, onClick, orientation }: Props): React$1.JSX.Element;
 
 interface TreeConnectorProps<T> {
     orientation: 'vertical' | 'horizontal';
-    childrenRowRef: React.RefObject<HTMLDivElement>;
+    childrenRowRef: React$1.RefObject<HTMLDivElement>;
     childrenNodes: InternalNode<T>[];
     highlightPathIds?: Set<string>;
 }
-declare function TreeConnector<T>({ orientation, childrenRowRef, childrenNodes, highlightPathIds, }: TreeConnectorProps<T>): React.JSX.Element;
+declare function TreeConnector<T>({ orientation, childrenRowRef, childrenNodes, highlightPathIds, }: TreeConnectorProps<T>): React$1.JSX.Element;
+
+declare function TreeExport<T = Record<string, unknown>>({ treeRef, data, filename, className, style, backgroundColor, scale, onExport, }: TreeExportProps<T>): React$1.JSX.Element;
 
 declare function useTreeCraft<T = Record<string, unknown>>(options: UseTreeCraftOptions<T>): UseTreeCraftReturn<T>;
 
@@ -318,4 +387,37 @@ declare function buildTree<T extends {
     parentId: string | null;
 }>): TreeNode<T>[];
 
-export { type AnimationPreset, DefaultCollapseBtn, type InternalNode, MiniMap, type MiniMapPosition, type Orientation, type RenderCollapseBtnProps, type RenderNodeProps, TreeConnector, TreeCraft, type TreeCraftProps, type TreeNode, TreeSearch, type UseTreeCraftOptions, type UseTreeCraftReturn, addChildNode, annotate, buildTree, collectAllIds, collectDescendantIds, findNode, flattenTree, generateId, getPath, moveNode, removeNode, toArray, updateNodeData, useTreeCraft };
+/**
+ * Trigger a browser download for a file using a Blob or string content.
+ */
+declare function downloadFile(content: Blob | string, filename: string, mimeType?: string): void;
+/**
+ * Export a TreeCraft DOM element as a standalone SVG string.
+ */
+declare function exportToSvg(element: HTMLElement, options?: SvgExportOptions): Promise<string>;
+/**
+ * Export a TreeCraft DOM element as a high-resolution PNG data URL.
+ */
+declare function exportToPng(element: HTMLElement, options?: PngExportOptions): Promise<string>;
+/**
+ * Download a TreeCraft DOM element as a standalone SVG file.
+ */
+declare function downloadSvg(element: HTMLElement, filename?: string, options?: SvgExportOptions): Promise<void>;
+/**
+ * Download a TreeCraft DOM element as a high-resolution PNG file.
+ */
+declare function downloadPng(element: HTMLElement, filename?: string, options?: PngExportOptions): Promise<void>;
+/**
+ * Export tree data as a formatted JSON string.
+ */
+declare function exportToJson<T = Record<string, unknown>>(data: TreeNode<T> | TreeNode<T>[], options?: JsonExportOptions): string;
+/**
+ * Download tree data as a JSON file.
+ */
+declare function downloadJson<T = Record<string, unknown>>(data: TreeNode<T> | TreeNode<T>[], filename?: string, options?: JsonExportOptions): void;
+/**
+ * Parse and validate a JSON string into a TreeNode structure.
+ */
+declare function importFromJson<T = Record<string, unknown>>(jsonString: string): TreeNode<T> | TreeNode<T>[];
+
+export { type AnimationPreset, type CanDropFn, DefaultCollapseBtn, type DropPosition, type ExportFormat, type InternalNode, type JsonExportOptions, MiniMap, type MiniMapPosition, type NodeMoveEvent, type Orientation, type PngExportOptions, type RenderCollapseBtnProps, type RenderNodeProps, type SvgExportOptions, TreeConnector, TreeCraft, type TreeCraftProps, type TreeCraftRef, TreeExport, type TreeExportProps, type TreeNode, TreeSearch, type UseTreeCraftOptions, type UseTreeCraftReturn, addChildNode, annotate, buildTree, collectAllIds, collectDescendantIds, downloadFile, downloadJson, downloadPng, downloadSvg, exportToJson, exportToPng, exportToSvg, findNode, flattenTree, generateId, getPath, importFromJson, moveNode, removeNode, toArray, updateNodeData, useTreeCraft };

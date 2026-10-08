@@ -3,7 +3,18 @@
 //  The built-in state manager. Zero boilerplate for consumers.
 // ─────────────────────────────────────────────────────────────
 import { useState, useCallback } from 'react';
-import type { TreeNode, UseTreeCraftOptions, UseTreeCraftReturn, DropPosition } from '../types';
+import {
+  exportToJson,
+  downloadJson as downloadJsonUtil,
+  importFromJson,
+} from '../utils/export';
+import type {
+  TreeNode,
+  UseTreeCraftOptions,
+  UseTreeCraftReturn,
+  DropPosition,
+  JsonExportOptions,
+} from '../types';
 import {
   toArray,
   generateId,
@@ -140,6 +151,28 @@ export function useTreeCraft<T = Record<string, unknown>>(
     [nodes],
   );
 
+  // ── Export / Import Utilities ───────────────────────────────────────────
+
+  const exportJson = useCallback(
+    (options?: JsonExportOptions) => exportToJson(data, options),
+    [data],
+  );
+
+  const downloadJson = useCallback(
+    (filename?: string, options?: JsonExportOptions) => {
+      downloadJsonUtil(data, filename, options);
+    },
+    [data],
+  );
+
+  const importJson = useCallback(
+    (jsonString: string) => {
+      const imported = importFromJson<T>(jsonString);
+      setData(imported);
+    },
+    [],
+  );
+
   return {
     data,
     setData,
@@ -161,5 +194,8 @@ export function useTreeCraft<T = Record<string, unknown>>(
     find,
     getPath: getPathFn,
     toFlat,
+    exportJson,
+    downloadJson,
+    importJson,
   };
 }

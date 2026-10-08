@@ -305,4 +305,81 @@ export interface UseTreeCraftReturn<T = Record<string, unknown>> {
   // ── Utilities ──────────────────────────────────────────────
   /** Replace the entire tree */
   setData: (data: TreeNode<T> | TreeNode<T>[]) => void;
+  /** Export tree data as JSON string */
+  exportJson: (options?: JsonExportOptions) => string;
+  /** Download tree data as JSON file */
+  downloadJson: (filename?: string, options?: JsonExportOptions) => void;
+  /** Import and set tree from a JSON string */
+  importJson: (jsonString: string) => void;
+}
+
+// ── 8. Export Options & Types ──────────────────────────────────────────────
+
+export type ExportFormat = 'png' | 'svg' | 'json';
+
+export interface SvgExportOptions {
+  /** Background color for the exported image. Default: 'transparent' */
+  backgroundColor?: string;
+  /** Padding in pixels around the tree diagram. Default: 32 */
+  padding?: number;
+  /** Title for the SVG element. Default: 'Tree Diagram' */
+  title?: string;
+  /** Extra CSS styles to inline in the exported SVG */
+  customCss?: string;
+}
+
+export interface PngExportOptions extends SvgExportOptions {
+  /** Resolution multiplier / DPI scale. Default: 2 */
+  scale?: number;
+  /** Image quality (0 to 1). Default: 1 */
+  quality?: number;
+}
+
+export interface JsonExportOptions {
+  /** Indentation spacing for JSON output. Default: 2 */
+  indent?: number;
+}
+
+// ── 9. TreeCraft Ref API ───────────────────────────────────────────────────
+
+export interface TreeCraftRef {
+  /** The root container element */
+  container: HTMLDivElement | null;
+  /** The viewport element */
+  viewport: HTMLDivElement | null;
+  /** The canvas element */
+  canvas: HTMLDivElement | null;
+  /** Export current tree as high-resolution PNG data URL */
+  exportPng: (options?: PngExportOptions) => Promise<string>;
+  /** Download current tree as PNG file */
+  downloadPng: (filename?: string, options?: PngExportOptions) => Promise<void>;
+  /** Export current tree as standalone SVG string */
+  exportSvg: (options?: SvgExportOptions) => Promise<string>;
+  /** Download current tree as SVG file */
+  downloadSvg: (filename?: string, options?: SvgExportOptions) => Promise<void>;
+  /** Export tree data as JSON string */
+  exportJson: (options?: JsonExportOptions) => string;
+  /** Download tree data as JSON file */
+  downloadJson: (filename?: string, options?: JsonExportOptions) => void;
+}
+
+// ── 10. TreeExport Companion Component Props ──────────────────────────────
+
+export interface TreeExportProps<T = Record<string, unknown>> {
+  /** Reference to the TreeCraft instance or container element */
+  treeRef?: React.RefObject<TreeCraftRef | null> | TreeCraftRef | React.RefObject<HTMLElement | null>;
+  /** Tree data (for JSON export) */
+  data?: TreeNode<T> | TreeNode<T>[];
+  /** Default filename prefix without extension */
+  filename?: string;
+  /** Additional CSS class */
+  className?: string;
+  /** Inline style overrides */
+  style?: CSSProperties;
+  /** Default background color for image exports */
+  backgroundColor?: string;
+  /** Default scale for PNG export */
+  scale?: number;
+  /** Callback triggered when an export completes */
+  onExport?: (format: ExportFormat) => void;
 }
