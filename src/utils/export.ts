@@ -201,10 +201,35 @@ export async function exportToSvg(
     el.classList.remove('tc-node-card--drop-inside');
   });
 
+  // Extract container-level CSS variables (like custom nodeGap, levelGap, line colors, etc.)
+  const containerTcVars: string[] = [];
+  try {
+    const computed = window.getComputedStyle(element);
+    const tcProps = [
+      '--tc-line-color',
+      '--tc-line-width',
+      '--tc-line-radius',
+      '--tc-node-gap',
+      '--tc-level-gap',
+      '--tc-focus-color',
+      '--tc-focus-glow',
+      '--tc-selected-color',
+    ];
+    for (const prop of tcProps) {
+      const val = computed.getPropertyValue(prop);
+      if (val) containerTcVars.push(`${prop}: ${val};`);
+    }
+  } catch {
+    // Ignore computed style errors
+  }
+
   // Inline styling
   const docStyles = collectDocumentStyles(safeForCanvas);
   const allStyles = `
     ${docStyles}
+    :root, .tc-tree-wrapper, .tc-forest, .tc-canvas {
+      ${containerTcVars.join(' ')}
+    }
     ${customCss}
     *, *::before, *::after {
       box-sizing: border-box;

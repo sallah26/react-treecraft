@@ -50,6 +50,8 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     lineWidth,
     lineRadius,
     highlightColor,
+    nodeGap,
+    levelGap,
     theme,
     className = '',
     style,
@@ -84,6 +86,8 @@ function TreeCraftInternal<T = Record<string, unknown>>(
   const resolvedLineWidth = lineWidth ?? theme?.lineWidth;
   const resolvedLineRadius = lineRadius ?? theme?.lineRadius ?? 8;
   const resolvedHighlightColor = highlightColor ?? theme?.highlightColor;
+  const resolvedNodeGap = nodeGap ?? theme?.nodeGap;
+  const resolvedLevelGap = levelGap ?? theme?.levelGap;
 
   // ── Initial collapsed state ────────────────────────────────
   const initCollapsedIds = useMemo<Set<string>>(() => {
@@ -367,8 +371,8 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     ...(resolvedLineWidth !== undefined ? { '--tc-line-width': `${resolvedLineWidth}px` } as any : {}),
     ...(resolvedLineRadius !== undefined ? { '--tc-line-radius': `${resolvedLineRadius}px` } as any : {}),
     ...(resolvedHighlightColor ? { '--tc-focus-color': resolvedHighlightColor } as any : {}),
-    ...(theme?.nodeGap !== undefined ? { '--tc-node-gap': `${theme.nodeGap}px` } as any : {}),
-    ...(theme?.levelGap !== undefined ? { '--tc-level-gap': `${theme.levelGap}px` } as any : {}),
+    ...(resolvedNodeGap !== undefined ? { '--tc-node-gap': `${resolvedNodeGap}px` } as any : {}),
+    ...(resolvedLevelGap !== undefined ? { '--tc-level-gap': `${resolvedLevelGap}px` } as any : {}),
     ...(theme?.animationDuration !== undefined ? { '--tc-animation-duration': `${theme.animationDuration}ms` } as any : {}),
     ...(animationDuration !== undefined ? { '--tc-animation-duration': `${animationDuration}ms` } as any : {}),
   };

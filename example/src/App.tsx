@@ -173,6 +173,8 @@ type AnimDuration = '100' | '200' | '400' | '600' | '1000';
 type LineRoundness = '0' | '6' | '12' | '20' | '32';
 type LineThickness = '1' | '2' | '3' | '4' | '6';
 type ColorPreset = '#94a3b8' | '#6366f1' | '#06b6d4' | '#10b981' | '#f59e0b' | '#f43f5e' | '#a855f7';
+type NodeGap = '12' | '24' | '36' | '48' | '64';
+type LevelGap = '20' | '36' | '48' | '64' | '80';
 
 const ANIM_OPTIONS: DropdownOption<AnimPreset>[] = [
   { value: 'fade',   label: 'Fade',   description: 'Opacity in/out' },
@@ -190,6 +192,22 @@ const DURATION_OPTIONS: DropdownOption<AnimDuration>[] = [
   { value: '400',  label: 'Slow',   description: '400ms' },
   { value: '600',  label: 'Slower', description: '600ms' },
   { value: '1000', label: 'Glacial',description: '1000ms' },
+];
+
+const NODE_GAP_OPTIONS: DropdownOption<NodeGap>[] = [
+  { value: '12', label: '12px (Tight)',    description: 'Compact side-by-side gap' },
+  { value: '24', label: '24px (Normal)',   description: 'Default sibling spacing' },
+  { value: '36', label: '36px (Relaxed)',  description: 'Spacious sibling spacing' },
+  { value: '48', label: '48px (Wide)',     description: 'Wide sibling spacing' },
+  { value: '64', label: '64px (X-Wide)',   description: 'Maximum sibling spacing' },
+];
+
+const LEVEL_GAP_OPTIONS: DropdownOption<LevelGap>[] = [
+  { value: '20', label: '20px (Tight)',    description: 'Short connector height' },
+  { value: '36', label: '36px (Normal)',   description: 'Default level distance' },
+  { value: '48', label: '48px (Relaxed)',  description: 'Roomy parent-child gap' },
+  { value: '64', label: '64px (Deep)',     description: 'Tall parent-child gap' },
+  { value: '80', label: '80px (X-Deep)',   description: 'Maximum level distance' },
 ];
 
 const MAP_POS_OPTIONS: DropdownOption<MiniMapPosition>[] = [
@@ -262,6 +280,10 @@ export default function App() {
   const [lineRoundness, setLineRoundness] = useState<LineRoundness>('12');
   const [lineThickness, setLineThickness] = useState<LineThickness>('2');
   const [lineColor, setLineColor] = useState<ColorPreset>('#94a3b8');
+
+  // ── Gap / Spacing Customization State ─────────────────────
+  const [nodeGap, setNodeGap] = useState<NodeGap>('24');
+  const [levelGap, setLevelGap] = useState<LevelGap>('36');
 
   const selectedCount = selectedIds.length;
 
@@ -342,6 +364,22 @@ export default function App() {
             value={lineColor}
             options={COLOR_OPTIONS}
             onChange={setLineColor}
+          />
+
+          {/* Sibling Node Gap */}
+          <StyledDropdown<NodeGap>
+            label="Node Gap"
+            value={nodeGap}
+            options={NODE_GAP_OPTIONS}
+            onChange={setNodeGap}
+          />
+
+          {/* Parent-Child Level Gap */}
+          <StyledDropdown<LevelGap>
+            label="Level Gap"
+            value={levelGap}
+            options={LEVEL_GAP_OPTIONS}
+            onChange={setLevelGap}
           />
 
           <StyledDropdown<AnimPreset>
@@ -487,6 +525,9 @@ export default function App() {
             )}
             <span className="info-bar__item">Orientation: <strong>{orientation}</strong></span>
             <span className="info-bar__item">
+              Gap: <strong>{nodeGap}px</strong> siblings • <strong>{levelGap}px</strong> level
+            </span>
+            <span className="info-bar__item">
               Connector: <strong>{connectorType}</strong> ({connectorType === 'orthogonal' ? `${lineRoundness}px corner` : connectorType}) • <strong>{lineThickness}px</strong> • <strong>{connectorPattern}</strong>
             </span>
             <span className="info-bar__item">Animation: <strong>{animPreset}</strong> @ <strong>{animDuration}ms</strong></span>
@@ -504,6 +545,8 @@ export default function App() {
               lineRadius={Number(lineRoundness)}
               lineWidth={Number(lineThickness)}
               lineColor={lineColor}
+              nodeGap={Number(nodeGap)}
+              levelGap={Number(levelGap)}
               highlightColor="#38bdf8"
               collapsible
               collapsedIds={tree.collapsedIds}
