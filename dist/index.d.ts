@@ -250,6 +250,8 @@ interface SvgExportOptions {
     title?: string;
     /** Extra CSS styles to inline in the exported SVG */
     customCss?: string;
+    /** Whether to sanitize out cross-origin font/image URLs for canvas rasterization */
+    safeForCanvas?: boolean;
 }
 interface PngExportOptions extends SvgExportOptions {
     /** Resolution multiplier / DPI scale. Default: 2 */
@@ -296,6 +298,10 @@ interface TreeExportProps<T = Record<string, unknown>> {
     backgroundColor?: string;
     /** Default scale for PNG export */
     scale?: number;
+    /** Enable built-in JSON file import button in menu. Default: true if onImport provided */
+    allowImport?: boolean;
+    /** Callback triggered when JSON tree is imported */
+    onImport?: (data: TreeNode<T> | TreeNode<T>[]) => void;
     /** Callback triggered when an export completes */
     onExport?: (format: ExportFormat) => void;
 }
@@ -350,7 +356,7 @@ interface TreeConnectorProps<T> {
 }
 declare function TreeConnector<T>({ orientation, childrenRowRef, childrenNodes, highlightPathIds, }: TreeConnectorProps<T>): React$1.JSX.Element;
 
-declare function TreeExport<T = Record<string, unknown>>({ treeRef, data, filename, className, style, backgroundColor, scale, onExport, }: TreeExportProps<T>): React$1.JSX.Element;
+declare function TreeExport<T = Record<string, unknown>>({ treeRef, data, filename, className, style, backgroundColor, scale, allowImport, onImport, onExport, }: TreeExportProps<T>): React$1.JSX.Element;
 
 declare function useTreeCraft<T = Record<string, unknown>>(options: UseTreeCraftOptions<T>): UseTreeCraftReturn<T>;
 
@@ -388,7 +394,7 @@ declare function buildTree<T extends {
 }>): TreeNode<T>[];
 
 /**
- * Trigger a browser download for a file using a Blob or string content.
+ * Trigger a browser download for a file using a Blob, data URL, or text string.
  */
 declare function downloadFile(content: Blob | string, filename: string, mimeType?: string): void;
 /**
@@ -419,5 +425,9 @@ declare function downloadJson<T = Record<string, unknown>>(data: TreeNode<T> | T
  * Parse and validate a JSON string into a TreeNode structure.
  */
 declare function importFromJson<T = Record<string, unknown>>(jsonString: string): TreeNode<T> | TreeNode<T>[];
+/**
+ * Read and parse a JSON File from an <input type="file"> event.
+ */
+declare function readJsonFile<T = Record<string, unknown>>(file: File): Promise<TreeNode<T> | TreeNode<T>[]>;
 
-export { type AnimationPreset, type CanDropFn, DefaultCollapseBtn, type DropPosition, type ExportFormat, type InternalNode, type JsonExportOptions, MiniMap, type MiniMapPosition, type NodeMoveEvent, type Orientation, type PngExportOptions, type RenderCollapseBtnProps, type RenderNodeProps, type SvgExportOptions, TreeConnector, TreeCraft, type TreeCraftProps, type TreeCraftRef, TreeExport, type TreeExportProps, type TreeNode, TreeSearch, type UseTreeCraftOptions, type UseTreeCraftReturn, addChildNode, annotate, buildTree, collectAllIds, collectDescendantIds, downloadFile, downloadJson, downloadPng, downloadSvg, exportToJson, exportToPng, exportToSvg, findNode, flattenTree, generateId, getPath, importFromJson, moveNode, removeNode, toArray, updateNodeData, useTreeCraft };
+export { type AnimationPreset, type CanDropFn, DefaultCollapseBtn, type DropPosition, type ExportFormat, type InternalNode, type JsonExportOptions, MiniMap, type MiniMapPosition, type NodeMoveEvent, type Orientation, type PngExportOptions, type RenderCollapseBtnProps, type RenderNodeProps, type SvgExportOptions, TreeConnector, TreeCraft, type TreeCraftProps, type TreeCraftRef, TreeExport, type TreeExportProps, type TreeNode, TreeSearch, type UseTreeCraftOptions, type UseTreeCraftReturn, addChildNode, annotate, buildTree, collectAllIds, collectDescendantIds, downloadFile, downloadJson, downloadPng, downloadSvg, exportToJson, exportToPng, exportToSvg, findNode, flattenTree, generateId, getPath, importFromJson, moveNode, readJsonFile, removeNode, toArray, updateNodeData, useTreeCraft };

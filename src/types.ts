@@ -326,6 +326,8 @@ export interface SvgExportOptions {
   title?: string;
   /** Extra CSS styles to inline in the exported SVG */
   customCss?: string;
+  /** Whether to sanitize out cross-origin font/image URLs for canvas rasterization */
+  safeForCanvas?: boolean;
 }
 
 export interface PngExportOptions extends SvgExportOptions {
@@ -380,6 +382,10 @@ export interface TreeExportProps<T = Record<string, unknown>> {
   backgroundColor?: string;
   /** Default scale for PNG export */
   scale?: number;
+  /** Enable built-in JSON file import button in menu. Default: true if onImport provided */
+  allowImport?: boolean;
+  /** Callback triggered when JSON tree is imported */
+  onImport?: (data: TreeNode<T> | TreeNode<T>[]) => void;
   /** Callback triggered when an export completes */
   onExport?: (format: ExportFormat) => void;
 }

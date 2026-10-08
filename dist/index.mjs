@@ -1,5 +1,5 @@
 import { forwardRef, useRef, useMemo, useState, useCallback, useEffect, useImperativeHandle, useLayoutEffect } from 'react';
-import { jsxs, jsx } from 'react/jsx-runtime';
+import { jsxs, jsx, Fragment } from 'react/jsx-runtime';
 import './index-2GXXQFP7.css';
 
 // src/components/TreeCraft.tsx
@@ -1024,8 +1024,20 @@ function MiniMap({
 // src/utils/export.ts
 function downloadFile(content, filename, mimeType = "application/octet-stream") {
   if (typeof window === "undefined") return;
-  const blob = typeof content === "string" ? new Blob([content], { type: mimeType }) : content;
-  const url = URL.createObjectURL(blob);
+  let url;
+  let isCreatedUrl = false;
+  if (typeof content === "string") {
+    if (content.startsWith("data:")) {
+      url = content;
+    } else {
+      const blob = new Blob([content], { type: mimeType });
+      url = URL.createObjectURL(blob);
+      isCreatedUrl = true;
+    }
+  } else {
+    url = URL.createObjectURL(content);
+    isCreatedUrl = true;
+  }
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
@@ -1034,22 +1046,27 @@ function downloadFile(content, filename, mimeType = "application/octet-stream") 
   anchor.click();
   setTimeout(() => {
     document.body.removeChild(anchor);
-    URL.revokeObjectURL(url);
-  }, 200);
+    if (isCreatedUrl) {
+      URL.revokeObjectURL(url);
+    }
+  }, 300);
 }
-function collectDocumentStyles() {
+function collectDocumentStyles(safeForCanvas = false) {
   if (typeof document === "undefined") return "";
   const cssChunks = [];
-  const rootComputed = window.getComputedStyle(document.documentElement);
-  const tcVars = [];
-  for (let i = 0; i < rootComputed.length; i++) {
-    const prop = rootComputed[i];
-    if (prop.startsWith("--tc-")) {
-      tcVars.push(`${prop}: ${rootComputed.getPropertyValue(prop)};`);
+  try {
+    const rootComputed = window.getComputedStyle(document.documentElement);
+    const tcVars = [];
+    for (let i = 0; i < rootComputed.length; i++) {
+      const prop = rootComputed[i];
+      if (prop.startsWith("--tc-")) {
+        tcVars.push(`${prop}: ${rootComputed.getPropertyValue(prop)};`);
+      }
     }
-  }
-  if (tcVars.length > 0) {
-    cssChunks.push(`:root { ${tcVars.join(" ")} }`);
+    if (tcVars.length > 0) {
+      cssChunks.push(`:root { ${tcVars.join(" ")} }`);
+    }
+  } catch {
   }
   const styleSheets = Array.from(document.styleSheets);
   for (const sheet of styleSheets) {
@@ -1057,7 +1074,12 @@ function collectDocumentStyles() {
       if (sheet.cssRules) {
         const rules = Array.from(sheet.cssRules);
         for (const rule of rules) {
-          cssChunks.push(rule.cssText);
+          let text = rule.cssText;
+          if (safeForCanvas) {
+            if (rule.type === CSSRule.IMPORT_RULE) continue;
+            text = text.replace(/url\(['"]?https?:\/\/[^)'"]+['"]?\)/gi, "none");
+          }
+          cssChunks.push(text);
         }
       }
     } catch {
@@ -1065,9 +1087,33 @@ function collectDocumentStyles() {
   }
   return cssChunks.join("\n");
 }
-function findTreeElement(containerOrElement) {
-  const treeWrapper = containerOrElement.querySelector(".tc-tree-wrapper, .tc-forest, .tc-canvas");
-  return treeWrapper ?? containerOrElement;
+function getTreeDimensions(element, padding = 32) {
+  const treeWrapper = element.querySelector(".tc-tree-wrapper, .tc-forest");
+  const canvasEl = element.querySelector(".tc-canvas");
+  const target = treeWrapper ?? canvasEl ?? element;
+  const allNodes = Array.from(target.querySelectorAll(".tc-node-card, .tc-branch"));
+  let maxW = target.scrollWidth || 0;
+  let maxH = target.scrollHeight || 0;
+  if (allNodes.length > 0) {
+    const rootRect = target.getBoundingClientRect();
+    let scaleFactor = 1;
+    if (canvasEl && canvasEl.style.transform) {
+      const match = canvasEl.style.transform.match(/scale\(([^)]+)\)/);
+      if (match) scaleFactor = parseFloat(match[1]) || 1;
+    }
+    allNodes.forEach((node) => {
+      const nr = node.getBoundingClientRect();
+      const right = (nr.right - rootRect.left) / scaleFactor;
+      const bottom = (nr.bottom - rootRect.top) / scaleFactor;
+      if (right > maxW) maxW = right;
+      if (bottom > maxH) maxH = bottom;
+    });
+  }
+  const contentWidth = Math.ceil(Math.max(maxW, target.offsetWidth || 0, 400));
+  const contentHeight = Math.ceil(Math.max(maxH, target.offsetHeight || 0, 300));
+  const totalWidth = Math.ceil(contentWidth + padding * 2);
+  const totalHeight = Math.ceil(contentHeight + padding * 2);
+  return { contentWidth, contentHeight, totalWidth, totalHeight, target };
 }
 async function exportToSvg(element, options = {}) {
   if (typeof window === "undefined") {
@@ -1077,27 +1123,75 @@ async function exportToSvg(element, options = {}) {
     backgroundColor = "transparent",
     padding = 32,
     title = "Tree Diagram",
-    customCss = ""
+    customCss = "",
+    safeForCanvas = false
   } = options;
-  const target = findTreeElement(element);
+  const { contentWidth, contentHeight, totalWidth, totalHeight, target } = getTreeDimensions(element, padding);
   const clone = target.cloneNode(true);
   clone.style.transform = "none";
   clone.style.margin = "0";
   clone.style.position = "static";
   clone.style.left = "auto";
   clone.style.top = "auto";
-  const scrollW = target.scrollWidth || target.offsetWidth || 800;
-  const scrollH = target.scrollHeight || target.offsetHeight || 600;
-  const contentWidth = Math.max(scrollW, target.getBoundingClientRect().width);
-  const contentHeight = Math.max(scrollH, target.getBoundingClientRect().height);
-  const totalWidth = Math.ceil(contentWidth + padding * 2);
-  const totalHeight = Math.ceil(contentHeight + padding * 2);
-  const docStyles = collectDocumentStyles();
+  clone.style.width = `${contentWidth}px`;
+  clone.style.height = `${contentHeight}px`;
+  clone.querySelectorAll("*").forEach((el) => {
+    el.style.removeProperty("animation");
+    el.style.removeProperty("animation-delay");
+    el.style.removeProperty("animation-fill-mode");
+    el.style.removeProperty("animation-name");
+    el.style.removeProperty("animation-duration");
+    el.style.opacity = "1";
+    el.style.transform = "none";
+    el.style.filter = "none";
+    el.style.visibility = "visible";
+    el.classList.remove("tc-node-card--dragging");
+    el.classList.remove("tc-node-card--drop-inside");
+  });
+  const docStyles = collectDocumentStyles(safeForCanvas);
   const allStyles = `
     ${docStyles}
     ${customCss}
-    * { box-sizing: border-box; }
-    .tc-tree-wrapper, .tc-forest { display: inline-flex !important; }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      animation: none !important;
+      transition: none !important;
+    }
+    [class*="tc-anim-"] {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+      filter: none !important;
+      visibility: visible !important;
+    }
+    .tc-tree-wrapper, .tc-forest {
+      display: inline-flex !important;
+      min-width: max-content !important;
+      min-height: max-content !important;
+      width: 100% !important;
+      height: 100% !important;
+      transform: none !important;
+      position: static !important;
+      overflow: visible !important;
+    }
+    .tc-branch {
+      opacity: 1 !important;
+      transform: none !important;
+      filter: none !important;
+      visibility: visible !important;
+    }
+    .tc-canvas {
+      display: inline-flex !important;
+      width: auto !important;
+      height: auto !important;
+      transform: none !important;
+      overflow: visible !important;
+    }
+    .tc-children-row--vertical, .tc-children-row--horizontal {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
   `;
   const serializer = new XMLSerializer();
   const serializedHtml = serializer.serializeToString(clone);
@@ -1114,7 +1208,7 @@ async function exportToSvg(element, options = {}) {
   ${backgroundColor && backgroundColor !== "transparent" ? `<rect width="100%" height="100%" fill="${backgroundColor}" />` : ""}
   <g transform="translate(${padding}, ${padding})">
     <foreignObject width="${contentWidth}" height="${contentHeight}" requiredExtensions="http://www.w3.org/1999/xhtml">
-      <div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block; width:100%; height:100%;">
+      <div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-flex; width:${contentWidth}px; height:${contentHeight}px; min-width:max-content; min-height:max-content;">
         ${serializedHtml}
       </div>
     </foreignObject>
@@ -1126,23 +1220,35 @@ async function exportToPng(element, options = {}) {
   const {
     scale = 2,
     quality = 1,
-    backgroundColor = "transparent"
+    backgroundColor = "transparent",
+    padding = 32
   } = options;
-  const svgString = await exportToSvg(element, options);
+  const { totalWidth, totalHeight } = getTreeDimensions(element, padding);
+  const svgString = await exportToSvg(element, {
+    ...options,
+    safeForCanvas: true
+  });
   return new Promise((resolve, reject) => {
-    const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-    const blobUrl = URL.createObjectURL(svgBlob);
+    let dataUri;
+    try {
+      const utf8Bytes = new TextEncoder().encode(svgString);
+      let binary = "";
+      for (let i = 0; i < utf8Bytes.length; i++) {
+        binary += String.fromCharCode(utf8Bytes[i]);
+      }
+      dataUri = `data:image/svg+xml;base64,${btoa(binary)}`;
+    } catch {
+      dataUri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
+    }
     const img = new Image();
+    img.crossOrigin = "anonymous";
     img.onload = () => {
       try {
-        const width = img.naturalWidth || img.width;
-        const height = img.naturalHeight || img.height;
         const canvas = document.createElement("canvas");
-        canvas.width = Math.round(width * scale);
-        canvas.height = Math.round(height * scale);
+        canvas.width = Math.round(totalWidth * scale);
+        canvas.height = Math.round(totalHeight * scale);
         const ctx = canvas.getContext("2d");
         if (!ctx) {
-          URL.revokeObjectURL(blobUrl);
           reject(new Error("Unable to create canvas 2D rendering context."));
           return;
         }
@@ -1152,21 +1258,17 @@ async function exportToPng(element, options = {}) {
         }
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
-        ctx.scale(scale, scale);
-        ctx.drawImage(img, 0, 0);
-        URL.revokeObjectURL(blobUrl);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         const pngUrl = canvas.toDataURL("image/png", quality);
         resolve(pngUrl);
       } catch (err) {
-        URL.revokeObjectURL(blobUrl);
         reject(err);
       }
     };
     img.onerror = (err) => {
-      URL.revokeObjectURL(blobUrl);
       reject(new Error(`Failed to load SVG into canvas for PNG rasterization: ${err}`));
     };
-    img.src = blobUrl;
+    img.src = dataUri;
   });
 }
 async function downloadSvg(element, filename = "tree-diagram.svg", options = {}) {
@@ -1175,9 +1277,7 @@ async function downloadSvg(element, filename = "tree-diagram.svg", options = {})
 }
 async function downloadPng(element, filename = "tree-diagram.png", options = {}) {
   const pngDataUrl = await exportToPng(element, options);
-  const res = await fetch(pngDataUrl);
-  const blob = await res.blob();
-  downloadFile(blob, filename, "image/png");
+  downloadFile(pngDataUrl, filename, "image/png");
 }
 function exportToJson(data, options = {}) {
   const { indent = 2 } = options;
@@ -1196,6 +1296,22 @@ function importFromJson(jsonString) {
     }
   }
   return parsed;
+}
+function readJsonFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result;
+        const result = importFromJson(text);
+        resolve(result);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsText(file);
+  });
 }
 function TreeCraftInternal({
   data,
@@ -1655,12 +1771,15 @@ function TreeExport({
   style,
   backgroundColor = "transparent",
   scale = 2,
+  allowImport = true,
+  onImport,
   onExport
 }) {
   const [open, setOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [activeFormat, setActiveFormat] = useState(null);
   const dropdownRef = useRef(null);
+  const fileInputRef = useRef(null);
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -1723,6 +1842,23 @@ function TreeExport({
       setActiveFormat(null);
     }
   };
+  const handleImportClick = () => {
+    setOpen(false);
+    fileInputRef.current?.click();
+  };
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const importedData = await readJsonFile(file);
+      onImport?.(importedData);
+    } catch (err) {
+      console.error("[react-treecraft] Import JSON failed:", err);
+      alert("Failed to parse JSON file. Please ensure it is a valid TreeCraft JSON export.");
+    } finally {
+      e.target.value = "";
+    }
+  };
   return /* @__PURE__ */ jsxs(
     "div",
     {
@@ -1759,7 +1895,7 @@ function TreeExport({
                   ]
                 }
               ),
-              /* @__PURE__ */ jsx("span", { children: isExporting ? `Exporting ${activeFormat?.toUpperCase()}...` : "Export" }),
+              /* @__PURE__ */ jsx("span", { children: isExporting ? `Exporting ${activeFormat?.toUpperCase()}...` : "Export / Import" }),
               /* @__PURE__ */ jsx(
                 "svg",
                 {
@@ -1786,7 +1922,7 @@ function TreeExport({
                 /* @__PURE__ */ jsx("span", { className: "tc-export-item-icon", children: "\u{1F4F8}" }),
                 /* @__PURE__ */ jsxs("div", { className: "tc-export-item-text", children: [
                   /* @__PURE__ */ jsx("span", { className: "tc-export-item-title", children: "Export PNG" }),
-                  /* @__PURE__ */ jsx("span", { className: "tc-export-item-subtitle", children: "High resolution (2x Retina)" })
+                  /* @__PURE__ */ jsx("span", { className: "tc-export-item-subtitle", children: "High resolution raster image" })
                 ] })
               ]
             }
@@ -1822,8 +1958,37 @@ function TreeExport({
                 ] })
               ]
             }
-          )
-        ] })
+          ),
+          allowImport && /* @__PURE__ */ jsxs(Fragment, { children: [
+            /* @__PURE__ */ jsx("div", { className: "tc-export-divider", style: { height: 1, background: "rgba(255,255,255,0.08)", margin: "4px 0" } }),
+            /* @__PURE__ */ jsxs(
+              "button",
+              {
+                type: "button",
+                className: "tc-export-item",
+                role: "menuitem",
+                onClick: handleImportClick,
+                children: [
+                  /* @__PURE__ */ jsx("span", { className: "tc-export-item-icon", children: "\u{1F4E5}" }),
+                  /* @__PURE__ */ jsxs("div", { className: "tc-export-item-text", children: [
+                    /* @__PURE__ */ jsx("span", { className: "tc-export-item-title", children: "Import JSON" }),
+                    /* @__PURE__ */ jsx("span", { className: "tc-export-item-subtitle", children: "Load from JSON file" })
+                  ] })
+                ]
+              }
+            )
+          ] })
+        ] }),
+        /* @__PURE__ */ jsx(
+          "input",
+          {
+            ref: fileInputRef,
+            type: "file",
+            accept: ".json,application/json",
+            style: { display: "none" },
+            onChange: handleFileChange
+          }
+        )
       ]
     }
   );
@@ -1984,6 +2149,6 @@ function useTreeCraft(options) {
   };
 }
 
-export { DefaultCollapseBtn, MiniMap, TreeConnector, TreeCraft, TreeExport, TreeSearch, addChildNode, annotate, buildTree, collectAllIds, collectDescendantIds, downloadFile, downloadJson, downloadPng, downloadSvg, exportToJson, exportToPng, exportToSvg, findNode, flattenTree, generateId, getPath, importFromJson, moveNode, removeNode, toArray, updateNodeData, useTreeCraft };
+export { DefaultCollapseBtn, MiniMap, TreeConnector, TreeCraft, TreeExport, TreeSearch, addChildNode, annotate, buildTree, collectAllIds, collectDescendantIds, downloadFile, downloadJson, downloadPng, downloadSvg, exportToJson, exportToPng, exportToSvg, findNode, flattenTree, generateId, getPath, importFromJson, moveNode, readJsonFile, removeNode, toArray, updateNodeData, useTreeCraft };
 //# sourceMappingURL=index.mjs.map
 //# sourceMappingURL=index.mjs.map

@@ -338,29 +338,17 @@ export default function App() {
           <button className="btn" onClick={tree.expandAll}>Expand All</button>
           <button className="btn" onClick={tree.collapseAll}>Collapse All</button>
 
-          {/* Export companion component */}
-          <TreeExport
+          {/* Export & Import companion component */}
+          <TreeExport<OrgNode>
             treeRef={treeRef}
             data={tree.data}
             filename="org-structure"
             backgroundColor="#0f172a"
             onExport={handleExportSuccess}
-          />
-
-          {/* Import JSON button */}
-          <button
-            className="btn"
-            onClick={() => fileInputRef.current?.click()}
-            title="Import tree structure from a JSON file"
-          >
-            📥 Import JSON
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json,application/json"
-            style={{ display: 'none' }}
-            onChange={handleFileUpload}
+            onImport={(imported: TreeNode<OrgNode> | TreeNode<OrgNode>[]) => {
+              tree.setData(imported);
+              showToast('✓ Tree JSON imported successfully!');
+            }}
           />
 
           {focusedId && (

@@ -6,11 +6,13 @@ import type {
   TreeExportProps,
   ExportFormat,
   TreeCraftRef,
+  TreeNode,
 } from '../types';
 import {
   downloadPng,
   downloadSvg,
   downloadJson,
+  readJsonFile,
 } from '../utils/export';
 
 export function TreeExport<T = Record<string, unknown>>({
@@ -21,12 +23,15 @@ export function TreeExport<T = Record<string, unknown>>({
   style,
   backgroundColor = 'transparent',
   scale = 2,
+  allowImport = true,
+  onImport,
   onExport,
 }: TreeExportProps<T>) {
   const [open, setOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [activeFormat, setActiveFormat] = useState<ExportFormat | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -97,6 +102,26 @@ export function TreeExport<T = Record<string, unknown>>({
     }
   };
 
+  const handleImportClick = () => {
+    setOpen(false);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const importedData = await readJsonFile<T>(file);
+      onImport?.(importedData);
+    } catch (err) {
+      console.error('[react-treecraft] Import JSON failed:', err);
+      alert('Failed to parse JSON file. Please ensure it is a valid TreeCraft JSON export.');
+    } finally {
+      e.target.value = '';
+    }
+  };
+
   return (
     <div
       ref={dropdownRef}
@@ -126,7 +151,7 @@ export function TreeExport<T = Record<string, unknown>>({
           <polyline points="7 10 12 15 17 10" />
           <line x1="12" y1="15" x2="12" y2="3" />
         </svg>
-        <span>{isExporting ? `Exporting ${activeFormat?.toUpperCase()}...` : 'Export'}</span>
+        <span>{isExporting ? `Exporting ${activeFormat?.toUpperCase()}...` : 'Export / Import'}</span>
         <svg
           className={`tc-export-chevron ${open ? 'tc-export-chevron--open' : ''}`}
           width="10"
@@ -149,7 +174,7 @@ export function TreeExport<T = Record<string, unknown>>({
             <span className="tc-export-item-icon">📸</span>
             <div className="tc-export-item-text">
               <span className="tc-export-item-title">Export PNG</span>
-              <span className="tc-export-item-subtitle">High resolution (2x Retina)</span>
+              <span className="tc-export-item-subtitle">High resolution raster image</span>
             </div>
           </button>
 
@@ -178,8 +203,35 @@ export function TreeExport<T = Record<string, unknown>>({
               <span className="tc-export-item-subtitle">Tree hierarchy data file</span>
             </div>
           </button>
+
+          {allowImport && (
+            <>
+              <div className="tc-export-divider" style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
+              <button
+                type="button"
+                className="tc-export-item"
+                role="menuitem"
+                onClick={handleImportClick}
+              >
+                <span className="tc-export-item-icon">📥</span>
+                <div className="tc-export-item-text">
+                  <span className="tc-export-item-title">Import JSON</span>
+                  <span className="tc-export-item-subtitle">Load from JSON file</span>
+                </div>
+              </button>
+            </>
+          )}
         </div>
       )}
+
+      {/* Hidden file input for import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json,application/json"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
     </div>
   );
 }

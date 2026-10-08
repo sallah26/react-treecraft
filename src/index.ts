@@ -38,6 +38,7 @@ export {
   exportToPng,
   exportToJson,
   importFromJson,
+  readJsonFile,
   downloadSvg,
   downloadPng,
   downloadJson,
