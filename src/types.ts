@@ -55,13 +55,22 @@ export interface RenderCollapseBtnProps<T = Record<string, unknown>> {
 
 // ── 3. Theme / Style ────────────────────────────────────────────────────────
 
+export type ConnectorType = 'orthogonal' | 'curved' | 'straight';
+export type ConnectorPattern = 'solid' | 'dashed' | 'dotted' | 'flow';
+
 export interface TreeCraftTheme {
   /** Connector line color. Default: '#94a3b8' */
   lineColor?: string;
   /** Connector line thickness in px. Default: 2 */
   lineWidth?: number;
-  /** Corner radius on connector lines in px. Default: 8 */
+  /** Corner radius on connector lines in px (for orthogonal lines). Default: 8 */
   lineRadius?: number;
+  /** Connector line routing style. Default: 'orthogonal' */
+  lineType?: ConnectorType;
+  /** Connector stroke pattern style. Default: 'solid' */
+  linePattern?: ConnectorPattern;
+  /** Highlight color for focused/selected ancestor path. Default: '#3b82f6' */
+  highlightColor?: string;
   /** Gap between sibling nodes (horizontal). Default: 24 */
   nodeGap?: number;
   /** Gap between parent and child row (vertical). Default: 32 */
@@ -129,6 +138,37 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
    * @default true
    */
   showLines?: boolean;
+  /**
+   * Connector line routing style: 'orthogonal' | 'curved' | 'straight'.
+   * @default 'orthogonal'
+   */
+  connectorType?: ConnectorType;
+  /**
+   * Connector stroke pattern: 'solid' | 'dashed' | 'dotted' | 'flow'.
+   * @default 'solid'
+   */
+  connectorPattern?: ConnectorPattern;
+  /**
+   * Connector line color.
+   * @default '#94a3b8'
+   */
+  lineColor?: string;
+  /**
+   * Connector line thickness in pixels.
+   * @default 2
+   */
+  lineWidth?: number;
+  /**
+   * Corner radius / roundness in pixels for orthogonal connector lines.
+   * Set to 0 for sharp 90-degree corners.
+   * @default 8
+   */
+  lineRadius?: number;
+  /**
+   * Color for the highlighted/active ancestor path.
+   * @default '#3b82f6'
+   */
+  highlightColor?: string;
 
   // ── Animation ─────────────────────────────────────────────
   /**

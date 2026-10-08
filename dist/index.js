@@ -2,7 +2,7 @@
 
 var react = require('react');
 var jsxRuntime = require('react/jsx-runtime');
-require('./index-2GXXQFP7.css');
+require('./index-45WPPR3E.css');
 
 // src/components/TreeCraft.tsx
 function DefaultCollapseBtn({ isCollapsed, onClick, orientation = "vertical" }) {
@@ -33,7 +33,13 @@ function TreeConnector({
   orientation,
   childrenRowRef,
   childrenNodes,
-  highlightPathIds
+  highlightPathIds,
+  connectorType = "orthogonal",
+  connectorPattern = "solid",
+  lineRadius = 8,
+  lineColor,
+  lineWidth,
+  highlightColor
 }) {
   const containerRef = react.useRef(null);
   const [layout, setLayout] = react.useState({ parentCoord: 0, childCoords: [], width: 0, height: 0 });
@@ -79,97 +85,112 @@ function TreeConnector({
       }
     );
   }
-  if (orientation === "vertical") {
-    const minX = childCoords[0];
-    const maxX = childCoords[childCoords.length - 1];
-    const midY = height / 2;
-    let basePath2 = "";
-    if (childCoords.length === 1) {
-      basePath2 = `M ${parentCoord} 0 L ${childCoords[0]} ${height}`;
-    } else {
-      const stemsDown = childCoords.map((x) => `M ${x} ${midY} L ${x} ${height}`).join(" ");
-      basePath2 = `M ${parentCoord} 0 L ${parentCoord} ${midY} M ${minX} ${midY} L ${maxX} ${midY} ${stemsDown}`;
-    }
-    const activeIndices2 = childrenNodes.map((child, idx) => highlightPathIds?.has(child.id) ? idx : -1).filter((idx) => idx !== -1);
-    const highlightedPaths2 = activeIndices2.map((idx) => {
-      const targetX = childCoords[idx];
-      if (targetX === void 0) return "";
-      if (childCoords.length === 1) {
-        return `M ${parentCoord} 0 L ${targetX} ${height}`;
-      }
-      return `M ${parentCoord} 0 L ${parentCoord} ${midY} L ${targetX} ${midY} L ${targetX} ${height}`;
-    }).filter(Boolean);
-    return /* @__PURE__ */ jsxRuntime.jsx(
-      "div",
-      {
-        ref: containerRef,
-        className: "tc-connector-zone tc-connector-zone--vertical",
-        "aria-hidden": "true",
-        children: /* @__PURE__ */ jsxRuntime.jsxs(
-          "svg",
-          {
-            className: "tc-connector-svg",
-            style: {
-              width: "100%",
-              height: "100%",
-              position: "absolute",
-              top: 0,
-              left: 0,
-              overflow: "visible",
-              pointerEvents: "none"
-            },
-            children: [
-              /* @__PURE__ */ jsxRuntime.jsx(
-                "path",
-                {
-                  d: basePath2,
-                  className: "tc-line tc-line--base",
-                  fill: "none",
-                  strokeLinecap: "round",
-                  strokeLinejoin: "round"
-                }
-              ),
-              highlightedPaths2.map((d, i) => /* @__PURE__ */ jsxRuntime.jsx(
-                "path",
-                {
-                  d,
-                  className: "tc-line tc-line--highlighted",
-                  fill: "none",
-                  strokeLinecap: "round",
-                  strokeLinejoin: "round"
-                },
-                i
-              ))
-            ]
-          }
-        )
-      }
-    );
-  }
-  const minY = childCoords[0];
-  const maxY = childCoords[childCoords.length - 1];
-  const midX = width / 2;
-  let basePath = "";
-  if (childCoords.length === 1) {
-    basePath = `M 0 ${parentCoord} L ${width} ${childCoords[0]}`;
-  } else {
-    const stemsRight = childCoords.map((y) => `M ${midX} ${y} L ${width} ${y}`).join(" ");
-    basePath = `M 0 ${parentCoord} L ${midX} ${parentCoord} M ${midX} ${minY} L ${midX} ${maxY} ${stemsRight}`;
-  }
   const activeIndices = childrenNodes.map((child, idx) => highlightPathIds?.has(child.id) ? idx : -1).filter((idx) => idx !== -1);
-  const highlightedPaths = activeIndices.map((idx) => {
-    const targetY = childCoords[idx];
-    if (targetY === void 0) return "";
-    if (childCoords.length === 1) {
-      return `M 0 ${parentCoord} L ${width} ${targetY}`;
+  let basePath = "";
+  let highlightedPaths = [];
+  if (orientation === "vertical") {
+    const midY = height / 2;
+    if (connectorType === "curved") {
+      basePath = childCoords.map((x) => `M ${parentCoord} 0 C ${parentCoord} ${midY}, ${x} ${midY}, ${x} ${height}`).join(" ");
+      highlightedPaths = activeIndices.map((idx) => {
+        const x = childCoords[idx];
+        return x !== void 0 ? `M ${parentCoord} 0 C ${parentCoord} ${midY}, ${x} ${midY}, ${x} ${height}` : "";
+      }).filter(Boolean);
+    } else if (connectorType === "straight") {
+      basePath = childCoords.map((x) => `M ${parentCoord} 0 L ${x} ${height}`).join(" ");
+      highlightedPaths = activeIndices.map((idx) => {
+        const x = childCoords[idx];
+        return x !== void 0 ? `M ${parentCoord} 0 L ${x} ${height}` : "";
+      }).filter(Boolean);
+    } else {
+      if (childCoords.length === 1) {
+        basePath = `M ${parentCoord} 0 L ${childCoords[0]} ${height}`;
+        highlightedPaths = activeIndices.map(() => `M ${parentCoord} 0 L ${childCoords[0]} ${height}`);
+      } else if (lineRadius <= 0) {
+        const minX = childCoords[0];
+        const maxX = childCoords[childCoords.length - 1];
+        const stemsDown = childCoords.map((x) => `M ${x} ${midY} L ${x} ${height}`).join(" ");
+        basePath = `M ${parentCoord} 0 L ${parentCoord} ${midY} M ${minX} ${midY} L ${maxX} ${midY} ${stemsDown}`;
+        highlightedPaths = activeIndices.map((idx) => {
+          const x = childCoords[idx];
+          return x !== void 0 ? `M ${parentCoord} 0 L ${parentCoord} ${midY} L ${x} ${midY} L ${x} ${height}` : "";
+        }).filter(Boolean);
+      } else {
+        const branchPaths = childCoords.map((x) => {
+          if (Math.abs(x - parentCoord) < 2) {
+            return `M ${parentCoord} 0 L ${parentCoord} ${height}`;
+          }
+          const isLeft = x < parentCoord;
+          const r1 = Math.min(lineRadius, Math.abs(parentCoord - x) / 2, midY / 2);
+          const r2 = Math.min(lineRadius, Math.abs(parentCoord - x) / 2, (height - midY) / 2);
+          if (isLeft) {
+            return `M ${parentCoord} 0 L ${parentCoord} ${midY - r1} Q ${parentCoord} ${midY} ${parentCoord - r1} ${midY} L ${x + r2} ${midY} Q ${x} ${midY} ${x} ${midY + r2} L ${x} ${height}`;
+          }
+          return `M ${parentCoord} 0 L ${parentCoord} ${midY - r1} Q ${parentCoord} ${midY} ${parentCoord + r1} ${midY} L ${x - r2} ${midY} Q ${x} ${midY} ${x} ${midY + r2} L ${x} ${height}`;
+        });
+        basePath = branchPaths.join(" ");
+        highlightedPaths = activeIndices.map((idx) => branchPaths[idx] || "").filter(Boolean);
+      }
     }
-    return `M 0 ${parentCoord} L ${midX} ${parentCoord} L ${midX} ${targetY} L ${width} ${targetY}`;
-  }).filter(Boolean);
+  }
+  if (orientation === "horizontal") {
+    const midX = width / 2;
+    if (connectorType === "curved") {
+      basePath = childCoords.map((y) => `M 0 ${parentCoord} C ${midX} ${parentCoord}, ${midX} ${y}, ${width} ${y}`).join(" ");
+      highlightedPaths = activeIndices.map((idx) => {
+        const y = childCoords[idx];
+        return y !== void 0 ? `M 0 ${parentCoord} C ${midX} ${parentCoord}, ${midX} ${y}, ${width} ${y}` : "";
+      }).filter(Boolean);
+    } else if (connectorType === "straight") {
+      basePath = childCoords.map((y) => `M 0 ${parentCoord} L ${width} ${y}`).join(" ");
+      highlightedPaths = activeIndices.map((idx) => {
+        const y = childCoords[idx];
+        return y !== void 0 ? `M 0 ${parentCoord} L ${width} ${y}` : "";
+      }).filter(Boolean);
+    } else {
+      if (childCoords.length === 1) {
+        basePath = `M 0 ${parentCoord} L ${width} ${childCoords[0]}`;
+        highlightedPaths = activeIndices.map(() => `M 0 ${parentCoord} L ${width} ${childCoords[0]}`);
+      } else if (lineRadius <= 0) {
+        const minY = childCoords[0];
+        const maxY = childCoords[childCoords.length - 1];
+        const stemsRight = childCoords.map((y) => `M ${midX} ${y} L ${width} ${y}`).join(" ");
+        basePath = `M 0 ${parentCoord} L ${midX} ${parentCoord} M ${midX} ${minY} L ${midX} ${maxY} ${stemsRight}`;
+        highlightedPaths = activeIndices.map((idx) => {
+          const y = childCoords[idx];
+          return y !== void 0 ? `M 0 ${parentCoord} L ${midX} ${parentCoord} L ${midX} ${y} L ${width} ${y}` : "";
+        }).filter(Boolean);
+      } else {
+        const branchPaths = childCoords.map((y) => {
+          if (Math.abs(y - parentCoord) < 2) {
+            return `M 0 ${parentCoord} L ${width} ${parentCoord}`;
+          }
+          const isUp = y < parentCoord;
+          const r1 = Math.min(lineRadius, midX / 2, Math.abs(parentCoord - y) / 2);
+          const r2 = Math.min(lineRadius, (width - midX) / 2, Math.abs(parentCoord - y) / 2);
+          if (isUp) {
+            return `M 0 ${parentCoord} L ${midX - r1} ${parentCoord} Q ${midX} ${parentCoord} ${midX} ${parentCoord - r1} L ${midX} ${y + r2} Q ${midX} ${y} ${midX + r2} ${y} L ${width} ${y}`;
+          }
+          return `M 0 ${parentCoord} L ${midX - r1} ${parentCoord} Q ${midX} ${parentCoord} ${midX} ${parentCoord + r1} L ${midX} ${y - r2} Q ${midX} ${y} ${midX + r2} ${y} L ${width} ${y}`;
+        });
+        basePath = branchPaths.join(" ");
+        highlightedPaths = activeIndices.map((idx) => branchPaths[idx] || "").filter(Boolean);
+      }
+    }
+  }
+  const baseStyle = {
+    ...lineColor ? { stroke: lineColor } : {},
+    ...lineWidth !== void 0 ? { strokeWidth: lineWidth } : {}
+  };
+  const highlightStyle = {
+    ...highlightColor ? { stroke: highlightColor } : {},
+    ...lineWidth !== void 0 ? { strokeWidth: lineWidth + 0.5 } : {}
+  };
   return /* @__PURE__ */ jsxRuntime.jsx(
     "div",
     {
       ref: containerRef,
-      className: "tc-connector-zone tc-connector-zone--horizontal",
+      className: `tc-connector-zone tc-connector-zone--${orientation}`,
       "aria-hidden": "true",
       children: /* @__PURE__ */ jsxRuntime.jsxs(
         "svg",
@@ -189,7 +210,8 @@ function TreeConnector({
               "path",
               {
                 d: basePath,
-                className: "tc-line tc-line--base",
+                className: `tc-line tc-line--base tc-line--${connectorPattern}`,
+                style: baseStyle,
                 fill: "none",
                 strokeLinecap: "round",
                 strokeLinejoin: "round"
@@ -199,7 +221,8 @@ function TreeConnector({
               "path",
               {
                 d,
-                className: "tc-line tc-line--highlighted",
+                className: `tc-line tc-line--highlighted tc-line--${connectorPattern}`,
+                style: highlightStyle,
                 fill: "none",
                 strokeLinecap: "round",
                 strokeLinejoin: "round"
@@ -233,6 +256,12 @@ function TreeBranch({
   onNodeClick,
   onToggleCollapse,
   onToggleSelect,
+  connectorType = "orthogonal",
+  connectorPattern = "solid",
+  lineRadius = 8,
+  lineColor,
+  lineWidth,
+  highlightColor,
   draggableNodes = false,
   draggedNodeId,
   draggedNodeDescendants,
@@ -399,7 +428,13 @@ function TreeBranch({
             orientation,
             childrenRowRef,
             childrenNodes: children,
-            highlightPathIds
+            highlightPathIds,
+            connectorType,
+            connectorPattern,
+            lineRadius,
+            lineColor,
+            lineWidth,
+            highlightColor
           }
         ),
         /* @__PURE__ */ jsxRuntime.jsx("div", { className: "tc-children-row tc-children-row--horizontal", ref: childrenRowRef, children: children.map((child, idx) => /* @__PURE__ */ jsxRuntime.jsx(
@@ -425,6 +460,12 @@ function TreeBranch({
             onNodeClick,
             onToggleCollapse,
             onToggleSelect,
+            connectorType,
+            connectorPattern,
+            lineRadius,
+            lineColor,
+            lineWidth,
+            highlightColor,
             draggableNodes,
             draggedNodeId,
             draggedNodeDescendants,
@@ -447,7 +488,13 @@ function TreeBranch({
           orientation,
           childrenRowRef,
           childrenNodes: children,
-          highlightPathIds
+          highlightPathIds,
+          connectorType,
+          connectorPattern,
+          lineRadius,
+          lineColor,
+          lineWidth,
+          highlightColor
         }
       ),
       /* @__PURE__ */ jsxRuntime.jsx("div", { className: "tc-children-row tc-children-row--vertical", ref: childrenRowRef, children: children.map((child, idx) => /* @__PURE__ */ jsxRuntime.jsx(
@@ -473,6 +520,12 @@ function TreeBranch({
           onNodeClick,
           onToggleCollapse,
           onToggleSelect,
+          connectorType,
+          connectorPattern,
+          lineRadius,
+          lineColor,
+          lineWidth,
+          highlightColor,
           draggableNodes,
           draggedNodeId,
           draggedNodeDescendants,
@@ -1325,10 +1378,18 @@ function TreeCraftInternal({
   collapseDepth,
   renderCollapseButton,
   onCollapseChange,
-  // styling
+  // styling & connectors
   orientation = "vertical",
   animationPreset = "fade",
   animationDuration,
+  showLines = true,
+  connectorType,
+  connectorPattern,
+  lineColor,
+  lineWidth,
+  lineRadius,
+  highlightColor,
+  theme,
   className = "",
   style,
   // features
@@ -1353,6 +1414,12 @@ function TreeCraftInternal({
 }, ref) {
   const containerRef = react.useRef(null);
   const isDraggable = draggableNodes || draggable;
+  const resolvedConnectorType = connectorType ?? theme?.lineType ?? "orthogonal";
+  const resolvedConnectorPattern = connectorPattern ?? theme?.linePattern ?? "solid";
+  const resolvedLineColor = lineColor ?? theme?.lineColor;
+  const resolvedLineWidth = lineWidth ?? theme?.lineWidth;
+  const resolvedLineRadius = lineRadius ?? theme?.lineRadius ?? 8;
+  const resolvedHighlightColor = highlightColor ?? theme?.highlightColor;
   const initCollapsedIds = react.useMemo(() => {
     const arr = toArray(data);
     const all = collectAllIds(arr);
@@ -1583,7 +1650,16 @@ function TreeCraftInternal({
     transformOrigin: "0 0",
     cursor: isPanning.current ? "grabbing" : "grab"
   } : {};
-  const durationStyle = animationDuration !== void 0 ? { "--tc-animation-duration": `${animationDuration}ms` } : {};
+  const lineThemeStyle = {
+    ...resolvedLineColor ? { "--tc-line-color": resolvedLineColor } : {},
+    ...resolvedLineWidth !== void 0 ? { "--tc-line-width": `${resolvedLineWidth}px` } : {},
+    ...resolvedLineRadius !== void 0 ? { "--tc-line-radius": `${resolvedLineRadius}px` } : {},
+    ...resolvedHighlightColor ? { "--tc-focus-color": resolvedHighlightColor } : {},
+    ...theme?.nodeGap !== void 0 ? { "--tc-node-gap": `${theme.nodeGap}px` } : {},
+    ...theme?.levelGap !== void 0 ? { "--tc-level-gap": `${theme.levelGap}px` } : {},
+    ...theme?.animationDuration !== void 0 ? { "--tc-animation-duration": `${theme.animationDuration}ms` } : {},
+    ...animationDuration !== void 0 ? { "--tc-animation-duration": `${animationDuration}ms` } : {}
+  };
   return /* @__PURE__ */ jsxRuntime.jsxs(
     "div",
     {
@@ -1594,7 +1670,7 @@ function TreeCraftInternal({
         width: "100%",
         height: "100%",
         overflow: "hidden",
-        ...durationStyle,
+        ...lineThemeStyle,
         ...style
       },
       children: [
@@ -1634,6 +1710,12 @@ function TreeCraftInternal({
                 onNodeClick,
                 onToggleCollapse: toggleCollapse,
                 onToggleSelect: toggleSelect,
+                connectorType: resolvedConnectorType,
+                connectorPattern: resolvedConnectorPattern,
+                lineRadius: resolvedLineRadius,
+                lineColor: resolvedLineColor,
+                lineWidth: resolvedLineWidth,
+                highlightColor: resolvedHighlightColor,
                 draggableNodes: isDraggable,
                 draggedNodeId,
                 draggedNodeDescendants,

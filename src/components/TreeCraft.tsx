@@ -39,10 +39,18 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     collapseDepth,
     renderCollapseButton,
     onCollapseChange,
-    // styling
+    // styling & connectors
     orientation = 'vertical',
     animationPreset = 'fade',
     animationDuration,
+    showLines = true,
+    connectorType,
+    connectorPattern,
+    lineColor,
+    lineWidth,
+    lineRadius,
+    highlightColor,
+    theme,
     className = '',
     style,
     // features
@@ -69,6 +77,13 @@ function TreeCraftInternal<T = Record<string, unknown>>(
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggable = draggableNodes || draggable;
+
+  const resolvedConnectorType = connectorType ?? theme?.lineType ?? 'orthogonal';
+  const resolvedConnectorPattern = connectorPattern ?? theme?.linePattern ?? 'solid';
+  const resolvedLineColor = lineColor ?? theme?.lineColor;
+  const resolvedLineWidth = lineWidth ?? theme?.lineWidth;
+  const resolvedLineRadius = lineRadius ?? theme?.lineRadius ?? 8;
+  const resolvedHighlightColor = highlightColor ?? theme?.highlightColor;
 
   // ── Initial collapsed state ────────────────────────────────
   const initCollapsedIds = useMemo<Set<string>>(() => {
@@ -347,9 +362,16 @@ function TreeCraftInternal<T = Record<string, unknown>>(
       }
     : {};
 
-  const durationStyle = animationDuration !== undefined
-    ? { '--tc-animation-duration': `${animationDuration}ms` } as React.CSSProperties
-    : {};
+  const lineThemeStyle: React.CSSProperties = {
+    ...(resolvedLineColor ? { '--tc-line-color': resolvedLineColor } as any : {}),
+    ...(resolvedLineWidth !== undefined ? { '--tc-line-width': `${resolvedLineWidth}px` } as any : {}),
+    ...(resolvedLineRadius !== undefined ? { '--tc-line-radius': `${resolvedLineRadius}px` } as any : {}),
+    ...(resolvedHighlightColor ? { '--tc-focus-color': resolvedHighlightColor } as any : {}),
+    ...(theme?.nodeGap !== undefined ? { '--tc-node-gap': `${theme.nodeGap}px` } as any : {}),
+    ...(theme?.levelGap !== undefined ? { '--tc-level-gap': `${theme.levelGap}px` } as any : {}),
+    ...(theme?.animationDuration !== undefined ? { '--tc-animation-duration': `${theme.animationDuration}ms` } as any : {}),
+    ...(animationDuration !== undefined ? { '--tc-animation-duration': `${animationDuration}ms` } as any : {}),
+  };
 
   return (
     <div
@@ -360,7 +382,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
         width: '100%',
         height: '100%',
         overflow: 'hidden',
-        ...durationStyle,
+        ...lineThemeStyle,
         ...style,
       }}
     >
@@ -401,6 +423,12 @@ function TreeCraftInternal<T = Record<string, unknown>>(
                 onNodeClick={onNodeClick}
                 onToggleCollapse={toggleCollapse}
                 onToggleSelect={toggleSelect}
+                connectorType={resolvedConnectorType}
+                connectorPattern={resolvedConnectorPattern}
+                lineRadius={resolvedLineRadius}
+                lineColor={resolvedLineColor}
+                lineWidth={resolvedLineWidth}
+                highlightColor={resolvedHighlightColor}
                 draggableNodes={isDraggable}
                 draggedNodeId={draggedNodeId}
                 draggedNodeDescendants={draggedNodeDescendants}

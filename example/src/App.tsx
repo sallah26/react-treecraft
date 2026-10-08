@@ -1,6 +1,13 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { TreeCraft, TreeSearch, TreeExport, useTreeCraft } from 'react-treecraft';
-import type { TreeNode, MiniMapPosition, TreeCraftRef, ExportFormat } from 'react-treecraft';
+import type {
+  TreeNode,
+  MiniMapPosition,
+  TreeCraftRef,
+  ExportFormat,
+  ConnectorType,
+  ConnectorPattern,
+} from 'react-treecraft';
 
 // ── Custom Dropdown ───────────────────────────────────────────
 interface DropdownOption<T extends string> {
@@ -159,10 +166,13 @@ function OrgNodeCard({
   );
 }
 
-// ── App ───────────────────────────────────────────────────────
+// ── App Options ───────────────────────────────────────────────
 type AnimPreset = 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip' | 'blur' | 'none';
 type Orientation = 'vertical' | 'horizontal';
 type AnimDuration = '100' | '200' | '400' | '600' | '1000';
+type LineRoundness = '0' | '6' | '12' | '20' | '32';
+type LineThickness = '1' | '2' | '3' | '4' | '6';
+type ColorPreset = '#94a3b8' | '#6366f1' | '#06b6d4' | '#10b981' | '#f59e0b' | '#f43f5e' | '#a855f7';
 
 const ANIM_OPTIONS: DropdownOption<AnimPreset>[] = [
   { value: 'fade',   label: 'Fade',   description: 'Opacity in/out' },
@@ -189,10 +199,48 @@ const MAP_POS_OPTIONS: DropdownOption<MiniMapPosition>[] = [
   { value: 'top-left',     label: '↖ Top Left',     description: 'Upper left corner' },
 ];
 
+const CONNECTOR_TYPE_OPTIONS: DropdownOption<ConnectorType>[] = [
+  { value: 'orthogonal', label: 'Orthogonal', description: 'Step line with 90° bends' },
+  { value: 'curved',     label: 'Curved',     description: 'Smooth Bézier S-curves' },
+  { value: 'straight',   label: 'Straight',   description: 'Direct diagonal lines' },
+];
+
+const PATTERN_OPTIONS: DropdownOption<ConnectorPattern>[] = [
+  { value: 'solid',  label: 'Solid',  description: 'Clean continuous line' },
+  { value: 'dashed', label: 'Dashed', description: 'Dashed stroke pattern' },
+  { value: 'dotted', label: 'Dotted', description: 'Rounded dotted points' },
+  { value: 'flow',   label: 'Flow',   description: 'Animated flowing pulses' },
+];
+
+const ROUNDNESS_OPTIONS: DropdownOption<LineRoundness>[] = [
+  { value: '0',  label: 'Sharp (0px)',    description: 'Crisp 90° right angles' },
+  { value: '6',  label: 'Subtle (6px)',   description: 'Small rounded corner' },
+  { value: '12', label: 'Rounded (12px)', description: 'Balanced smooth corner' },
+  { value: '20', label: 'Smooth (20px)',  description: 'Wide soft corner' },
+  { value: '32', label: 'Extra (32px)',   description: 'Extra smooth bend' },
+];
+
+const THICKNESS_OPTIONS: DropdownOption<LineThickness>[] = [
+  { value: '1', label: '1px (Thin)',   description: 'Fine wireframe' },
+  { value: '2', label: '2px (Normal)', description: 'Standard line' },
+  { value: '3', label: '3px (Medium)', description: 'Prominent stroke' },
+  { value: '4', label: '4px (Thick)',  description: 'Heavy bold line' },
+  { value: '6', label: '6px (Extra)',  description: 'Maximum thickness' },
+];
+
+const COLOR_OPTIONS: DropdownOption<ColorPreset>[] = [
+  { value: '#94a3b8', label: '🔘 Slate',   description: 'Default slate line' },
+  { value: '#6366f1', label: '🟣 Indigo',  description: 'Vibrant indigo line' },
+  { value: '#06b6d4', label: '🔵 Cyan',    description: 'Neon cyan line' },
+  { value: '#10b981', label: '🟢 Emerald', description: 'Emerald green line' },
+  { value: '#f59e0b', label: '🟠 Amber',   description: 'Warm amber line' },
+  { value: '#f43f5e', label: '🔴 Rose',    description: 'Electric rose line' },
+  { value: '#a855f7', label: '💜 Purple',  description: 'Deep purple line' },
+];
+
 export default function App() {
   const tree = useTreeCraft<OrgNode>({ initialData: INITIAL_DATA });
   const treeRef = useRef<TreeCraftRef>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [orientation, setOrientation] = useState<Orientation>('vertical');
   const [animPreset, setAnimPreset] = useState<AnimPreset>('fade');
@@ -207,6 +255,13 @@ export default function App() {
   const [focusedId, setFocusedId] = useState<string | undefined>();
   const [highlightPath, setHighlightPath] = useState<string | undefined>();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // ── Connector Customization State ──────────────────────────
+  const [connectorType, setConnectorType] = useState<ConnectorType>('orthogonal');
+  const [connectorPattern, setConnectorPattern] = useState<ConnectorPattern>('solid');
+  const [lineRoundness, setLineRoundness] = useState<LineRoundness>('12');
+  const [lineThickness, setLineThickness] = useState<LineThickness>('2');
+  const [lineColor, setLineColor] = useState<ColorPreset>('#94a3b8');
 
   const selectedCount = selectedIds.length;
 
@@ -223,25 +278,6 @@ export default function App() {
 
   const handleExportSuccess = (format: ExportFormat) => {
     showToast(`✓ Exported ${format.toUpperCase()} successfully!`);
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        tree.importJson(text);
-        showToast('✓ Tree JSON loaded successfully!');
-      } catch (err) {
-        alert('Invalid JSON file format. Please upload a valid TreeCraft JSON export.');
-      }
-    };
-    reader.readAsText(file);
-    // Reset file input value
-    e.target.value = '';
   };
 
   return (
@@ -265,6 +301,48 @@ export default function App() {
           >
             {orientation === 'vertical' ? '↔ Horizontal' : '↕ Vertical'}
           </button>
+
+          {/* Connector Routing Style */}
+          <StyledDropdown<ConnectorType>
+            label="Line Style"
+            value={connectorType}
+            options={CONNECTOR_TYPE_OPTIONS}
+            onChange={setConnectorType}
+          />
+
+          {/* Corner Roundness (available for orthogonal lines) */}
+          {connectorType === 'orthogonal' && (
+            <StyledDropdown<LineRoundness>
+              label="Corners"
+              value={lineRoundness}
+              options={ROUNDNESS_OPTIONS}
+              onChange={setLineRoundness}
+            />
+          )}
+
+          {/* Stroke Pattern */}
+          <StyledDropdown<ConnectorPattern>
+            label="Pattern"
+            value={connectorPattern}
+            options={PATTERN_OPTIONS}
+            onChange={setConnectorPattern}
+          />
+
+          {/* Line Thickness */}
+          <StyledDropdown<LineThickness>
+            label="Width"
+            value={lineThickness}
+            options={THICKNESS_OPTIONS}
+            onChange={setLineThickness}
+          />
+
+          {/* Line Color */}
+          <StyledDropdown<ColorPreset>
+            label="Color"
+            value={lineColor}
+            options={COLOR_OPTIONS}
+            onChange={setLineColor}
+          />
 
           <StyledDropdown<AnimPreset>
             label="Anim"
@@ -408,6 +486,9 @@ export default function App() {
               <span className="info-bar__item">Focused: <strong>{focusedId}</strong></span>
             )}
             <span className="info-bar__item">Orientation: <strong>{orientation}</strong></span>
+            <span className="info-bar__item">
+              Connector: <strong>{connectorType}</strong> ({connectorType === 'orthogonal' ? `${lineRoundness}px corner` : connectorType}) • <strong>{lineThickness}px</strong> • <strong>{connectorPattern}</strong>
+            </span>
             <span className="info-bar__item">Animation: <strong>{animPreset}</strong> @ <strong>{animDuration}ms</strong></span>
           </div>
 
@@ -418,6 +499,12 @@ export default function App() {
               orientation={orientation}
               animationPreset={animPreset}
               animationDuration={Number(animDuration)}
+              connectorType={connectorType}
+              connectorPattern={connectorPattern}
+              lineRadius={Number(lineRoundness)}
+              lineWidth={Number(lineThickness)}
+              lineColor={lineColor}
+              highlightColor="#38bdf8"
               collapsible
               collapsedIds={tree.collapsedIds}
               onCollapseChange={(id, collapsed) => (collapsed ? tree.collapse(id) : tree.expand(id))}

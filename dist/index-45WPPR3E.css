@@ -181,14 +181,42 @@
 .tc-line--base {
   stroke: var(--tc-line-color);
   stroke-width: var(--tc-line-width);
-  transition: stroke var(--tc-animation-duration) ease;
+  transition: stroke var(--tc-animation-duration) ease, stroke-width var(--tc-animation-duration) ease;
 }
 
 .tc-line--highlighted {
   stroke: var(--tc-focus-color);
   stroke-width: calc(var(--tc-line-width) + 0.5px);
-  filter: drop-shadow(0 0 4px var(--tc-focus-color));
+  filter: drop-shadow(0 0 5px var(--tc-focus-color));
   transition: stroke var(--tc-animation-duration) ease, filter var(--tc-animation-duration) ease;
+}
+
+/* ── Connector Line Patterns ────────────────────────────────── */
+.tc-line--solid {
+  stroke-dasharray: none;
+}
+
+.tc-line--dashed {
+  stroke-dasharray: 6 6;
+}
+
+.tc-line--dotted {
+  stroke-dasharray: 2 6;
+  stroke-linecap: round;
+}
+
+.tc-line--flow {
+  stroke-dasharray: 8 8;
+  animation: tc-line-flow 1.2s linear infinite;
+}
+
+@keyframes tc-line-flow {
+  from {
+    stroke-dashoffset: 16;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 /* ── Node wrapper ───────────────────────────────────────────── */

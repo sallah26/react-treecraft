@@ -41,13 +41,21 @@ interface RenderCollapseBtnProps<T = Record<string, unknown>> {
     node: TreeNode<T>;
     onToggle: (e: MouseEvent) => void;
 }
+type ConnectorType = 'orthogonal' | 'curved' | 'straight';
+type ConnectorPattern = 'solid' | 'dashed' | 'dotted' | 'flow';
 interface TreeCraftTheme {
     /** Connector line color. Default: '#94a3b8' */
     lineColor?: string;
     /** Connector line thickness in px. Default: 2 */
     lineWidth?: number;
-    /** Corner radius on connector lines in px. Default: 8 */
+    /** Corner radius on connector lines in px (for orthogonal lines). Default: 8 */
     lineRadius?: number;
+    /** Connector line routing style. Default: 'orthogonal' */
+    lineType?: ConnectorType;
+    /** Connector stroke pattern style. Default: 'solid' */
+    linePattern?: ConnectorPattern;
+    /** Highlight color for focused/selected ancestor path. Default: '#3b82f6' */
+    highlightColor?: string;
     /** Gap between sibling nodes (horizontal). Default: 24 */
     nodeGap?: number;
     /** Gap between parent and child row (vertical). Default: 32 */
@@ -98,6 +106,37 @@ interface TreeCraftProps<T = Record<string, unknown>> {
      * @default true
      */
     showLines?: boolean;
+    /**
+     * Connector line routing style: 'orthogonal' | 'curved' | 'straight'.
+     * @default 'orthogonal'
+     */
+    connectorType?: ConnectorType;
+    /**
+     * Connector stroke pattern: 'solid' | 'dashed' | 'dotted' | 'flow'.
+     * @default 'solid'
+     */
+    connectorPattern?: ConnectorPattern;
+    /**
+     * Connector line color.
+     * @default '#94a3b8'
+     */
+    lineColor?: string;
+    /**
+     * Connector line thickness in pixels.
+     * @default 2
+     */
+    lineWidth?: number;
+    /**
+     * Corner radius / roundness in pixels for orthogonal connector lines.
+     * Set to 0 for sharp 90-degree corners.
+     * @default 8
+     */
+    lineRadius?: number;
+    /**
+     * Color for the highlighted/active ancestor path.
+     * @default '#3b82f6'
+     */
+    highlightColor?: string;
     /**
      * Animation style for expand/collapse.
      * @default 'fade'
@@ -353,8 +392,14 @@ interface TreeConnectorProps<T> {
     childrenRowRef: React$1.RefObject<HTMLDivElement>;
     childrenNodes: InternalNode<T>[];
     highlightPathIds?: Set<string>;
+    connectorType?: ConnectorType;
+    connectorPattern?: ConnectorPattern;
+    lineRadius?: number;
+    lineColor?: string;
+    lineWidth?: number;
+    highlightColor?: string;
 }
-declare function TreeConnector<T>({ orientation, childrenRowRef, childrenNodes, highlightPathIds, }: TreeConnectorProps<T>): React$1.JSX.Element;
+declare function TreeConnector<T>({ orientation, childrenRowRef, childrenNodes, highlightPathIds, connectorType, connectorPattern, lineRadius, lineColor, lineWidth, highlightColor, }: TreeConnectorProps<T>): React$1.JSX.Element;
 
 declare function TreeExport<T = Record<string, unknown>>({ treeRef, data, filename, className, style, backgroundColor, scale, allowImport, onImport, onExport, }: TreeExportProps<T>): React$1.JSX.Element;
 
@@ -430,4 +475,4 @@ declare function importFromJson<T = Record<string, unknown>>(jsonString: string)
  */
 declare function readJsonFile<T = Record<string, unknown>>(file: File): Promise<TreeNode<T> | TreeNode<T>[]>;
 
-export { type AnimationPreset, type CanDropFn, DefaultCollapseBtn, type DropPosition, type ExportFormat, type InternalNode, type JsonExportOptions, MiniMap, type MiniMapPosition, type NodeMoveEvent, type Orientation, type PngExportOptions, type RenderCollapseBtnProps, type RenderNodeProps, type SvgExportOptions, TreeConnector, TreeCraft, type TreeCraftProps, type TreeCraftRef, TreeExport, type TreeExportProps, type TreeNode, TreeSearch, type UseTreeCraftOptions, type UseTreeCraftReturn, addChildNode, annotate, buildTree, collectAllIds, collectDescendantIds, downloadFile, downloadJson, downloadPng, downloadSvg, exportToJson, exportToPng, exportToSvg, findNode, flattenTree, generateId, getPath, importFromJson, moveNode, readJsonFile, removeNode, toArray, updateNodeData, useTreeCraft };
+export { type AnimationPreset, type CanDropFn, type ConnectorPattern, type ConnectorType, DefaultCollapseBtn, type DropPosition, type ExportFormat, type InternalNode, type JsonExportOptions, MiniMap, type MiniMapPosition, type NodeMoveEvent, type Orientation, type PngExportOptions, type RenderCollapseBtnProps, type RenderNodeProps, type SvgExportOptions, TreeConnector, TreeCraft, type TreeCraftProps, type TreeCraftRef, type TreeCraftTheme, TreeExport, type TreeExportProps, type TreeNode, TreeSearch, type UseTreeCraftOptions, type UseTreeCraftReturn, addChildNode, annotate, buildTree, collectAllIds, collectDescendantIds, downloadFile, downloadJson, downloadPng, downloadSvg, exportToJson, exportToPng, exportToSvg, findNode, flattenTree, generateId, getPath, importFromJson, moveNode, readJsonFile, removeNode, toArray, updateNodeData, useTreeCraft };

@@ -2,7 +2,15 @@
 //  TreeBranch — renders one node + its subtree recursively
 // ─────────────────────────────────────────────────────────────
 import React, { useRef, useState } from 'react';
-import type { InternalNode, TreeCraftProps, DropPosition, NodeMoveEvent, CanDropFn } from '../types';
+import type {
+  InternalNode,
+  TreeCraftProps,
+  DropPosition,
+  NodeMoveEvent,
+  CanDropFn,
+  ConnectorType,
+  ConnectorPattern,
+} from '../types';
 import { DefaultCollapseBtn } from './DefaultCollapseBtn';
 import { TreeConnector } from './TreeConnector';
 
@@ -28,6 +36,13 @@ interface TreeBranchProps<T> {
   onNodeClick?: TreeCraftProps<T>['onNodeClick'];
   onToggleCollapse: (id: string) => void;
   onToggleSelect: (id: string, path: string[]) => void;
+  // Connector styling
+  connectorType?: ConnectorType;
+  connectorPattern?: ConnectorPattern;
+  lineRadius?: number;
+  lineColor?: string;
+  lineWidth?: number;
+  highlightColor?: string;
   // Drag & Drop
   draggableNodes?: boolean;
   draggedNodeId?: string | null;
@@ -59,6 +74,12 @@ export function TreeBranch<T>({
   onNodeClick,
   onToggleCollapse,
   onToggleSelect,
+  connectorType = 'orthogonal',
+  connectorPattern = 'solid',
+  lineRadius = 8,
+  lineColor,
+  lineWidth,
+  highlightColor,
   draggableNodes = false,
   draggedNodeId,
   draggedNodeDescendants,
@@ -263,6 +284,12 @@ export function TreeBranch<T>({
               childrenRowRef={childrenRowRef}
               childrenNodes={children}
               highlightPathIds={highlightPathIds}
+              connectorType={connectorType}
+              connectorPattern={connectorPattern}
+              lineRadius={lineRadius}
+              lineColor={lineColor}
+              lineWidth={lineWidth}
+              highlightColor={highlightColor}
             />
             <div className="tc-children-row tc-children-row--horizontal" ref={childrenRowRef}>
               {children.map((child, idx) => (
@@ -288,6 +315,12 @@ export function TreeBranch<T>({
                   onNodeClick={onNodeClick}
                   onToggleCollapse={onToggleCollapse}
                   onToggleSelect={onToggleSelect}
+                  connectorType={connectorType}
+                  connectorPattern={connectorPattern}
+                  lineRadius={lineRadius}
+                  lineColor={lineColor}
+                  lineWidth={lineWidth}
+                  highlightColor={highlightColor}
                   draggableNodes={draggableNodes}
                   draggedNodeId={draggedNodeId}
                   draggedNodeDescendants={draggedNodeDescendants}
@@ -317,6 +350,12 @@ export function TreeBranch<T>({
             childrenRowRef={childrenRowRef}
             childrenNodes={children}
             highlightPathIds={highlightPathIds}
+            connectorType={connectorType}
+            connectorPattern={connectorPattern}
+            lineRadius={lineRadius}
+            lineColor={lineColor}
+            lineWidth={lineWidth}
+            highlightColor={highlightColor}
           />
           <div className="tc-children-row tc-children-row--vertical" ref={childrenRowRef}>
             {children.map((child, idx) => (
@@ -342,6 +381,12 @@ export function TreeBranch<T>({
                 onNodeClick={onNodeClick}
                 onToggleCollapse={onToggleCollapse}
                 onToggleSelect={onToggleSelect}
+                connectorType={connectorType}
+                connectorPattern={connectorPattern}
+                lineRadius={lineRadius}
+                lineColor={lineColor}
+                lineWidth={lineWidth}
+                highlightColor={highlightColor}
                 draggableNodes={draggableNodes}
                 draggedNodeId={draggedNodeId}
                 draggedNodeDescendants={draggedNodeDescendants}
