@@ -6,6 +6,7 @@ test-consumer/
 # Build artifacts
 dist/
 example/dist/
+*.tgz
 
 # Development / Logs
 *.log

@@ -54,11 +54,33 @@ export function TreeConnector<T>({
     if (orientation === 'vertical') {
       const parentCoord = row.offsetWidth / 2;
       const childCoords = childElements.map((el) => el.offsetLeft + el.offsetWidth / 2);
-      setLayout({ parentCoord, childCoords, width, height });
+      setLayout((prev) => {
+        if (
+          Math.abs(prev.width - width) < 0.5 &&
+          Math.abs(prev.height - height) < 0.5 &&
+          Math.abs(prev.parentCoord - parentCoord) < 0.5 &&
+          prev.childCoords.length === childCoords.length &&
+          prev.childCoords.every((c, idx) => Math.abs(c - childCoords[idx]) < 0.5)
+        ) {
+          return prev;
+        }
+        return { parentCoord, childCoords, width, height };
+      });
     } else {
       const parentCoord = row.offsetHeight / 2;
       const childCoords = childElements.map((el) => el.offsetTop + el.offsetHeight / 2);
-      setLayout({ parentCoord, childCoords, width, height });
+      setLayout((prev) => {
+        if (
+          Math.abs(prev.width - width) < 0.5 &&
+          Math.abs(prev.height - height) < 0.5 &&
+          Math.abs(prev.parentCoord - parentCoord) < 0.5 &&
+          prev.childCoords.length === childCoords.length &&
+          prev.childCoords.every((c, idx) => Math.abs(c - childCoords[idx]) < 0.5)
+        ) {
+          return prev;
+        }
+        return { parentCoord, childCoords, width, height };
+      });
     }
   }, [orientation, childrenRowRef]);
 
