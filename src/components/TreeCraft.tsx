@@ -197,6 +197,11 @@ function TreeCraftInternal<T = Record<string, unknown>>(
   const viewportRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
+  const memoizedTranslate = useMemo(
+    () => (zoomable ? { x: transform.x, y: transform.y } : undefined),
+    [zoomable, transform.x, transform.y],
+  );
+
   // Keep transformRef in sync
   useEffect(() => {
     transformRef.current = transform;
@@ -457,7 +462,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
           position={miniMapPosition}
           onPositionChange={onMiniMapPositionChange}
           scale={zoomable ? transform.scale : undefined}
-          translate={zoomable ? { x: transform.x, y: transform.y } : undefined}
+          translate={zoomable ? memoizedTranslate : undefined}
           onNavigate={zoomable ? handleNavigate : undefined}
           onNodeClick={(node) => {
             onNodeClick?.(node);

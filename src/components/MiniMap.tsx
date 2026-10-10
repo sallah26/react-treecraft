@@ -69,13 +69,16 @@ export function MiniMap<T = Record<string, unknown>>({
 
   const dataArr = useMemo(() => toArray(data), [data]);
 
+  const tx = translate?.x;
+  const ty = translate?.y;
+
   // ── Track Container Scroll & Viewport ─────────────────────────
   useEffect(() => {
     const container = containerRef?.current;
     if (!container) return;
 
     const updateViewport = () => {
-      if (scale !== undefined && translate !== undefined) {
+      if (scale !== undefined && tx !== undefined && ty !== undefined) {
         // Zoom/Pan mode: compute viewport radar box from canvas bounds
         const canvasEl = container.querySelector('.tc-canvas') as HTMLElement | null;
         if (!canvasEl) return;
@@ -94,21 +97,43 @@ export function MiniMap<T = Record<string, unknown>>({
         const x = Math.min(1 - w, Math.max(0, leftOffset / cRect.width));
         const y = Math.min(1 - h, Math.max(0, topOffset / cRect.height));
 
-        setViewportBox({ x, y, w, h });
+        setViewportBox((prev) => {
+          if (
+            prev &&
+            Math.abs(prev.x - x) < 0.002 &&
+            Math.abs(prev.y - y) < 0.002 &&
+            Math.abs(prev.w - w) < 0.002 &&
+            Math.abs(prev.h - h) < 0.002
+          ) {
+            return prev;
+          }
+          return { x, y, w, h };
+        });
         return;
       }
 
       // Standard scroll mode
       const { scrollLeft, scrollTop, scrollWidth, scrollHeight, clientWidth, clientHeight } = container;
       if (scrollWidth <= clientWidth + 2 && scrollHeight <= clientHeight + 2) {
-        setViewportBox(null);
+        setViewportBox((prev) => (prev === null ? null : null));
         return;
       }
       const w = scrollWidth > 0 ? Math.min(1, clientWidth / scrollWidth) : 1;
       const h = scrollHeight > 0 ? Math.min(1, clientHeight / scrollHeight) : 1;
       const x = scrollWidth > 0 ? Math.min(1 - w, Math.max(0, scrollLeft / scrollWidth)) : 0;
       const y = scrollHeight > 0 ? Math.min(1 - h, Math.max(0, scrollTop / scrollHeight)) : 0;
-      setViewportBox({ x, y, w, h });
+      setViewportBox((prev) => {
+        if (
+          prev &&
+          Math.abs(prev.x - x) < 0.002 &&
+          Math.abs(prev.y - y) < 0.002 &&
+          Math.abs(prev.w - w) < 0.002 &&
+          Math.abs(prev.h - h) < 0.002
+        ) {
+          return prev;
+        }
+        return { x, y, w, h };
+      });
     };
 
     updateViewport();
@@ -126,7 +151,7 @@ export function MiniMap<T = Record<string, unknown>>({
       window.removeEventListener('resize', updateViewport);
       resizeObserver?.disconnect();
     };
-  }, [containerRef, dataArr, scale, translate]);
+  }, [containerRef, scale, tx, ty]);
 
   // ── Calculate Hierarchical Coordinates ───────────────────────
   const { layoutNodes, totalNodes } = useMemo(() => {
