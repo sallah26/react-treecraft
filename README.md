@@ -334,4 +334,4 @@ const {
 
 ## 📄 License
 
-MIT © [Selahadin Hamid](https://github.com/selahadin)
+MIT © [Selahadin Hamid](https://github.com/sallah26)

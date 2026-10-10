@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 example/node_modules/
+test-consumer/
 
 # Build artifacts
 dist/
