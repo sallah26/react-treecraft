@@ -12,7 +12,10 @@
     "org-chart",
     "treecraft",
     "node",
-    "headless"
+    "headless",
+    "graph",
+    "tree-view",
+    "mindmap"
   ],
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -26,14 +29,22 @@
     "./styles": "./dist/index.css"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": [
+    "dist/index.css",
+    "**/*.css"
   ],
   "scripts": {
     "build": "tsup",
     "build:watch": "tsup --watch",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run test && npm run typecheck && npm run build"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
@@ -45,6 +56,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tsup": "^8.1.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vitest": "^5.0.3"
   }
 }

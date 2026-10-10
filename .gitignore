@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+example/node_modules/
+
+# Build artifacts
+dist/
+example/dist/
+
+# Development / Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test / Coverage
+coverage/
+.vitest/
+
+# Vite & Bundler caches
+.vite/
+example/.vite/
+*.tsbuildinfo
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.local
+.env.*.local

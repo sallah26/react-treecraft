@@ -1,0 +1,15 @@
+# Source & Demo
+src/
+example/
+tests/
+
+# Configuration
+tsconfig.json
+tsup.config.ts
+vitest.config.ts
+
+# Tooling & Logs
+.git/
+.github/
+*.log
+node_modules/
