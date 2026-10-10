@@ -2,6 +2,7 @@
 node_modules/
 example/node_modules/
 test-consumer/
+public-page/
 
 # Build artifacts
 dist/
