@@ -40,20 +40,40 @@ export function TreeConnector<T>({
     height: number;
   }>({ parentCoord: 0, childCoords: [], width: 0, height: 0 });
 
+  const getRow = useCallback(() => {
+    return (
+      childrenRowRef.current ||
+      (containerRef.current?.nextElementSibling as HTMLElement | null)
+    );
+  }, [childrenRowRef]);
+
   const measure = useCallback(() => {
-    const row = childrenRowRef.current;
+    const row = getRow();
     const container = containerRef.current;
     if (!row || !container) return;
 
     const childElements = Array.from(row.children) as HTMLElement[];
     if (childElements.length === 0) return;
 
-    const width = container.offsetWidth || row.offsetWidth;
-    const height = container.offsetHeight || 32;
+    const isVertical = orientation === 'vertical';
+    const rowSize = isVertical ? row.offsetWidth : row.offsetHeight;
+    if (rowSize === 0) {
+      // Not yet laid out by browser, wait for observer or animation frame
+      return;
+    }
 
-    if (orientation === 'vertical') {
+    const width = container.offsetWidth || row.offsetWidth;
+    const height = container.offsetHeight || (isVertical ? 36 : row.offsetHeight || 36);
+
+    if (width === 0 || height === 0) return;
+
+    if (isVertical) {
       const parentCoord = row.offsetWidth / 2;
       const childCoords = childElements.map((el) => el.offsetLeft + el.offsetWidth / 2);
+      if (childCoords.every((c) => c === 0) && childElements.length > 1) {
+        return;
+      }
+
       setLayout((prev) => {
         if (
           Math.abs(prev.width - width) < 0.5 &&
@@ -69,6 +89,10 @@ export function TreeConnector<T>({
     } else {
       const parentCoord = row.offsetHeight / 2;
       const childCoords = childElements.map((el) => el.offsetTop + el.offsetHeight / 2);
+      if (childCoords.every((c) => c === 0) && childElements.length > 1) {
+        return;
+      }
+
       setLayout((prev) => {
         if (
           Math.abs(prev.width - width) < 0.5 &&
@@ -82,24 +106,54 @@ export function TreeConnector<T>({
         return { parentCoord, childCoords, width, height };
       });
     }
-  }, [orientation, childrenRowRef]);
+  }, [orientation, getRow]);
 
   useLayoutEffect(() => {
     measure();
-    const row = childrenRowRef.current;
     const container = containerRef.current;
-    if (!row || !container) return;
+    const row = getRow();
 
     const ro = new ResizeObserver(() => {
       measure();
     });
 
-    ro.observe(row);
-    ro.observe(container);
-    Array.from(row.children).forEach((child) => ro.observe(child));
+    if (container) ro.observe(container);
+    if (container?.parentElement) ro.observe(container.parentElement);
+    if (row) {
+      ro.observe(row);
+      Array.from(row.children).forEach((child) => ro.observe(child));
+    }
 
-    return () => ro.disconnect();
-  }, [measure, childrenNodes.length]);
+    const rafId = requestAnimationFrame(() => {
+      measure();
+      const updatedRow = getRow();
+      if (updatedRow && updatedRow !== row) {
+        ro.observe(updatedRow);
+        Array.from(updatedRow.children).forEach((child) => ro.observe(child));
+      }
+    });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      ro.disconnect();
+    };
+  }, [measure, getRow, childrenNodes.length]);
+
+  // Secondary effect to ensure measurement after browser paint & font resolution
+  React.useEffect(() => {
+    measure();
+    const rafId = requestAnimationFrame(() => {
+      measure();
+    });
+    const t1 = setTimeout(measure, 30);
+    const t2 = setTimeout(measure, 120);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [measure]);
 
   const { parentCoord, childCoords, width, height } = layout;
 
