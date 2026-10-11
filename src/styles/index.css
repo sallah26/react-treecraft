@@ -35,13 +35,12 @@
   height: 100%;
   box-sizing: border-box;
   overflow: auto;
-  display: flex;
-  flex-direction: column;
+  display: block;
   -webkit-overflow-scrolling: touch;
 }
 
 .tc-root--horizontal .tc-viewport {
-  flex-direction: row;
+  display: block;
 }
 
 /* ── Canvas wrapper (centers tree horizontally & vertically) ── */
@@ -54,14 +53,18 @@
   min-height: 100%;
   width: max-content;
   box-sizing: border-box;
-  padding: 32px;
-  margin: auto;
+  padding: 64px 100px;
+  margin: 0 auto;
 }
 
 .tc-root--horizontal .tc-canvas {
   flex-direction: row;
   min-height: 100%;
   height: max-content;
+  min-width: 100%;
+  width: max-content;
+  padding: 64px 100px;
+  margin: 0 auto;
 }
 
 .tc-tree-wrapper {

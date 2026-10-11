@@ -67,9 +67,52 @@ export function TreeConnector<T>({
 
     if (width === 0 || height === 0) return;
 
+    const containerRect = container.getBoundingClientRect();
+
+    // Scale factors convert screen bounding rect differences to the SVG container's local CSS coordinates
+    // (Preserves exact sub-pixel precision across transforms, zoom scale, and padding)
+    const scaleX =
+      containerRect.width > 0 && container.offsetWidth > 0
+        ? container.offsetWidth / containerRect.width
+        : 1;
+    const scaleY =
+      containerRect.height > 0 && container.offsetHeight > 0
+        ? container.offsetHeight / containerRect.height
+        : 1;
+
+    // Resolve parent node's anchor element (collapse button or node card)
+    const subtree = container.parentElement;
+    const parentBranch = subtree?.parentElement;
+    const parentCollapseBtn = parentBranch?.querySelector(
+      ':scope > .tc-collapse-btn-wrapper'
+    ) as HTMLElement | null;
+    const parentCard = (parentBranch?.querySelector(':scope > .tc-node-wrapper') ||
+      subtree?.previousElementSibling) as HTMLElement | null;
+    const parentTarget = parentCollapseBtn || parentCard;
+
     if (isVertical) {
-      const parentCoord = row.offsetWidth / 2;
-      const childCoords = childElements.map((el) => el.offsetLeft + el.offsetWidth / 2);
+      let parentCoord = row.offsetWidth / 2;
+      if (parentTarget && containerRect.width > 0) {
+        const pRect = parentTarget.getBoundingClientRect();
+        if (pRect.width > 0) {
+          parentCoord = (pRect.left + pRect.width / 2 - containerRect.left) * scaleX;
+        }
+      }
+
+      // Compute exact horizontal center of each child's card
+      const childCoords = childElements.map((el) => {
+        const childCard = (el.querySelector(':scope > .tc-node-wrapper') ||
+          el.querySelector('.tc-node-wrapper') ||
+          el) as HTMLElement;
+        if (childCard && containerRect.width > 0) {
+          const cRect = childCard.getBoundingClientRect();
+          if (cRect.width > 0) {
+            return (cRect.left + cRect.width / 2 - containerRect.left) * scaleX;
+          }
+        }
+        return el.offsetLeft + el.offsetWidth / 2;
+      });
+
       if (childCoords.every((c) => c === 0) && childElements.length > 1) {
         return;
       }
@@ -87,8 +130,28 @@ export function TreeConnector<T>({
         return { parentCoord, childCoords, width, height };
       });
     } else {
-      const parentCoord = row.offsetHeight / 2;
-      const childCoords = childElements.map((el) => el.offsetTop + el.offsetHeight / 2);
+      let parentCoord = row.offsetHeight / 2;
+      if (parentTarget && containerRect.height > 0) {
+        const pRect = parentTarget.getBoundingClientRect();
+        if (pRect.height > 0) {
+          parentCoord = (pRect.top + pRect.height / 2 - containerRect.top) * scaleY;
+        }
+      }
+
+      // Compute exact vertical center of each child's card
+      const childCoords = childElements.map((el) => {
+        const childCard = (el.querySelector(':scope > .tc-node-wrapper') ||
+          el.querySelector('.tc-node-wrapper') ||
+          el) as HTMLElement;
+        if (childCard && containerRect.height > 0) {
+          const cRect = childCard.getBoundingClientRect();
+          if (cRect.height > 0) {
+            return (cRect.top + cRect.height / 2 - containerRect.top) * scaleY;
+          }
+        }
+        return el.offsetTop + el.offsetHeight / 2;
+      });
+
       if (childCoords.every((c) => c === 0) && childElements.length > 1) {
         return;
       }
@@ -118,11 +181,21 @@ export function TreeConnector<T>({
     });
 
     if (container) ro.observe(container);
-    if (container?.parentElement) ro.observe(container.parentElement);
     if (row) {
       ro.observe(row);
-      Array.from(row.children).forEach((child) => ro.observe(child));
+      Array.from(row.children).forEach((child) => {
+        ro.observe(child);
+        const card = child.querySelector('.tc-node-wrapper');
+        if (card) ro.observe(card);
+      });
     }
+
+    const subtree = container?.parentElement;
+    const parentBranch = subtree?.parentElement;
+    const parentTarget =
+      parentBranch?.querySelector(':scope > .tc-collapse-btn-wrapper') ||
+      parentBranch?.querySelector(':scope > .tc-node-wrapper');
+    if (parentTarget) ro.observe(parentTarget);
 
     const rafId = requestAnimationFrame(() => {
       measure();
@@ -138,22 +211,6 @@ export function TreeConnector<T>({
       ro.disconnect();
     };
   }, [measure, getRow, childrenNodes.length]);
-
-  // Secondary effect to ensure measurement after browser paint & font resolution
-  React.useEffect(() => {
-    measure();
-    const rafId = requestAnimationFrame(() => {
-      measure();
-    });
-    const t1 = setTimeout(measure, 30);
-    const t2 = setTimeout(measure, 120);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, [measure]);
 
   const { parentCoord, childCoords, width, height } = layout;
 
