@@ -7,6 +7,7 @@ export { TreeCraft } from './components/TreeCraft';
 
 // Optional companion components
 export { TreeSearch } from './components/TreeSearch';
+export type { TreeSearchProps } from './components/TreeSearch';
 export { MiniMap } from './components/MiniMap';
 export { DefaultCollapseBtn } from './components/DefaultCollapseBtn';
 export { TreeConnector } from './components/TreeConnector';
@@ -59,6 +60,7 @@ export type {
   AnimationPreset,
   Orientation,
   MiniMapPosition,
+  MiniMapProps,
   DropPosition,
   NodeMoveEvent,
   CanDropFn,

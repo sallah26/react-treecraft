@@ -2,23 +2,12 @@
 //  MiniMap — Glassmorphic interactive corner radar for trees
 // ─────────────────────────────────────────────────────────────
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
-import type { TreeNode, MiniMapPosition } from '../types';
+import type { TreeNode, MiniMapPosition, MiniMapProps } from '../types';
 import { toArray } from '../utils/tree-helpers';
+import { normalizeColorString, parseColorToRgba, colorWithAlpha, isLightBackground } from '../utils/color-helpers';
 
-export interface MiniMapProps<T = Record<string, unknown>> {
-  data: TreeNode<T> | TreeNode<T>[];
-  containerRef?: React.RefObject<HTMLDivElement>;
-  orientation?: 'vertical' | 'horizontal';
-  focusedNodeId?: string;
-  highlightPathIds?: Set<string>;
-  selectedIds?: Set<string>;
-  position?: MiniMapPosition;
-  onPositionChange?: (position: MiniMapPosition) => void;
-  scale?: number;
-  translate?: { x: number; y: number };
-  onNavigate?: (x: number, y: number) => void;
-  onNodeClick?: (node: TreeNode<T>) => void;
-}
+// ── Re-export so consumers can import MiniMapProps from the component file too ──
+export type { MiniMapProps };
 
 interface LayoutItem<T> {
   id: string;
@@ -47,6 +36,48 @@ const POSITIONS: MiniMapPosition[] = [
   'top-right',
 ];
 
+// ── Static dark-mode fallbacks (used when no CSS var / prop is found) ─────────
+const DARK_BG_FALLBACK = 'rgba(15, 23, 42, 0.92)';
+const DARK_BORDER_FALLBACK = 'rgba(255, 255, 255, 0.08)';
+const DARK_PRIMARY_FALLBACK = '#60a5fa';
+const DARK_NODE_FALLBACK = 'rgba(148, 163, 184, 0.7)';
+
+/**
+ * Reads the resolved value of a CSS custom property from `document.documentElement`.
+ * Handles the Tailwind/shadcn convention where values may be raw numbers/percentages
+ * that need to be wrapped in `hsl()`.
+ */
+function readCssVar(names: string[]): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const style = window.getComputedStyle(document.documentElement);
+    for (const name of names) {
+      const raw = style.getPropertyValue(name).trim();
+      if (raw) return normalizeColorString(raw);
+    }
+  } catch {
+    // Non-DOM environment
+  }
+  return null;
+}
+
+/**
+ * Derives a resolved color string from:
+ * 1. An explicit prop (highest priority)
+ * 2. A list of CSS variable names to try in order
+ * 3. A static fallback string
+ */
+function resolveColor(
+  explicit: string | null | undefined,
+  cssVars: string[],
+  fallback: string,
+): string {
+  if (explicit) return explicit;
+  const fromCss = readCssVar(cssVars);
+  if (fromCss) return fromCss;
+  return fallback;
+}
+
 export function MiniMap<T = Record<string, unknown>>({
   data,
   containerRef,
@@ -60,8 +91,15 @@ export function MiniMap<T = Record<string, unknown>>({
   scale,
   translate,
   onNavigate,
+  primaryColor: primaryColorProp,
+  backgroundColor: backgroundColorProp,
+  borderColor: borderColorProp,
+  nodeColor: nodeColorProp,
+  className = '',
+  style,
 }: MiniMapProps<T>) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [minimized, setMinimized] = useState(false);
   const [hoveredNode, setHoveredNode] = useState<{ label: string; x: number; y: number } | null>(null);
   const [viewportBox, setViewportBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
@@ -72,7 +110,111 @@ export function MiniMap<T = Record<string, unknown>>({
   const tx = translate?.x;
   const ty = translate?.y;
 
-  // ── Track Container Scroll & Viewport ─────────────────────────
+  // ── Resolve dynamic theme colors ────────────────────────────────────────────
+  // These are computed once per render but can react to CSS variable changes
+  // because they derive from the live DOM via getComputedStyle.
+  const resolvedBg = useMemo(
+    () => resolveColor(backgroundColorProp, ['--background', '--color-background'], DARK_BG_FALLBACK),
+    [backgroundColorProp],
+  );
+
+  const resolvedBorder = useMemo(
+    () => resolveColor(borderColorProp, ['--border', '--color-border'], DARK_BORDER_FALLBACK),
+    [borderColorProp],
+  );
+
+  const resolvedPrimary = useMemo(
+    () => resolveColor(primaryColorProp, ['--primary', '--color-primary', '--tc-focus-color'], DARK_PRIMARY_FALLBACK),
+    [primaryColorProp],
+  );
+
+  const resolvedNode = useMemo(
+    () => resolveColor(nodeColorProp, ['--tc-line-color', '--muted-foreground'], DARK_NODE_FALLBACK),
+    [nodeColorProp],
+  );
+
+  // Determine if the resolved background is light so we can adapt text/icon colors
+  const isLight = useMemo(() => isLightBackground(resolvedBg), [resolvedBg]);
+
+  // ── Computed color palette ──────────────────────────────────────────────────
+  // From the primary color we derive:
+  //   • focused node fill / stroke
+  //   • highlighted path line / glow
+  //   • viewport lens fill / stroke
+  //   • selected node (shifted hue)
+  //   • root node (same primary, slightly de-saturated)
+  // From the node color we derive:
+  //   • regular node fill
+  //   • inactive connector line color
+
+  const palette = useMemo(() => {
+    const primary = parseColorToRgba(resolvedPrimary, { r: 96, g: 165, b: 250, a: 1 });
+    const nodeDot = parseColorToRgba(resolvedNode, { r: 148, g: 163, b: 184, a: 0.7 });
+
+    return {
+      // primary-derived
+      primarySolid: `rgb(${primary.r}, ${primary.g}, ${primary.b})`,
+      primaryGlow12: `rgba(${primary.r}, ${primary.g}, ${primary.b}, 0.12)`,
+      primaryGlow25: `rgba(${primary.r}, ${primary.g}, ${primary.b}, 0.25)`,
+      primaryGlow50: `rgba(${primary.r}, ${primary.g}, ${primary.b}, 0.50)`,
+
+      // highlighted path: shift hue slightly towards cyan (blend primary with #38bdf8)
+      pathSolid: colorWithAlpha(resolvedPrimary, 0.9),
+      pathGlow: `rgba(${Math.min(255, primary.r - 40)}, ${Math.min(255, primary.g + 24)}, ${Math.min(255, primary.b + 8)}, 0.25)`,
+
+      // selected: shift towards violet
+      selectedSolid: `rgba(${Math.min(255, primary.r + 70)}, ${Math.max(0, primary.g - 26)}, ${Math.min(255, primary.b + 4)}, 1)`,
+      selectedGlow: `rgba(${Math.min(255, primary.r + 70)}, ${Math.max(0, primary.g - 26)}, ${Math.min(255, primary.b + 4)}, 0.25)`,
+
+      // root: use the primary color at full opacity
+      rootSolid: `rgb(${primary.r}, ${primary.g}, ${primary.b})`,
+      rootRing: `rgba(${primary.r}, ${primary.g}, ${primary.b}, 0.4)`,
+
+      // regular node dot (from nodeColor)
+      regularFill: `rgba(${nodeDot.r}, ${nodeDot.g}, ${nodeDot.b}, 0.75)`,
+
+      // connector lines (from nodeColor, very transparent)
+      connectorDefault: `rgba(${nodeDot.r}, ${nodeDot.g}, ${nodeDot.b}, 0.20)`,
+
+      // shine on focused node inner dot
+      shineFill: isLight ? 'rgba(0, 0, 0, 0.6)' : '#ffffff',
+
+      // position switcher active color
+      activeRect: `rgb(${primary.r}, ${primary.g}, ${primary.b})`,
+    };
+  }, [resolvedPrimary, resolvedNode, isLight]);
+
+  // ── Minimap shell inline styles (background, border) ────────────────────────
+  // We inject these so the shell always reflects the resolved colors
+  // regardless of the static CSS rules in index.css.
+  const shellStyle = useMemo<React.CSSProperties>(() => {
+    const bgRgba = parseColorToRgba(resolvedBg, { r: 15, g: 23, b: 42, a: 1 });
+    // Use the resolved bg with ~90% opacity for the glassmorphism backdrop
+    const bgWithAlpha = `rgba(${bgRgba.r}, ${bgRgba.g}, ${bgRgba.b}, 0.92)`;
+
+    const borderRgba = parseColorToRgba(resolvedBorder, { r: 255, g: 255, b: 255, a: 0.08 });
+    const borderSolid = `rgba(${borderRgba.r}, ${borderRgba.g}, ${borderRgba.b}, ${Math.max(0.06, borderRgba.a)})`;
+
+    return {
+      background: bgWithAlpha,
+      border: `1px solid ${borderSolid}`,
+      boxShadow: `0 16px 36px rgba(${bgRgba.r}, ${bgRgba.g}, ${bgRgba.b}, 0.45), 0 0 0 1px rgba(${bgRgba.r > 128 ? 0 : 255}, ${bgRgba.r > 128 ? 0 : 255}, ${bgRgba.r > 128 ? 0 : 255}, 0.04)`,
+      color: isLight ? 'rgba(0, 0, 0, 0.75)' : 'rgba(255, 255, 255, 0.75)',
+      ...style,
+    };
+  }, [resolvedBg, resolvedBorder, isLight, style]);
+
+  // Canvas container inline style
+  const canvasContainerStyle = useMemo<React.CSSProperties>(() => {
+    const bgRgba = parseColorToRgba(resolvedBg, { r: 15, g: 23, b: 42, a: 1 });
+    const borderRgba = parseColorToRgba(resolvedBorder, { r: 255, g: 255, b: 255, a: 0.05 });
+    return {
+      background: `rgba(${bgRgba.r}, ${bgRgba.g}, ${bgRgba.b}, 0.65)`,
+      border: `1px solid rgba(${borderRgba.r}, ${borderRgba.g}, ${borderRgba.b}, ${Math.max(0.04, borderRgba.a * 0.6)})`,
+    };
+  }, [resolvedBg, resolvedBorder]);
+
+  // ── Track Container Scroll & Viewport ─────────────────────────────────────
   useEffect(() => {
     const container = containerRef?.current;
     if (!container) return;
@@ -153,7 +295,7 @@ export function MiniMap<T = Record<string, unknown>>({
     };
   }, [containerRef, scale, tx, ty]);
 
-  // ── Calculate Hierarchical Coordinates ───────────────────────
+  // ── Calculate Hierarchical Coordinates ────────────────────────────────────
   const { layoutNodes, totalNodes } = useMemo(() => {
     const nodes: LayoutItem<T>[] = [];
     let leafCounter = 0;
@@ -240,7 +382,7 @@ export function MiniMap<T = Record<string, unknown>>({
     return { layoutNodes: nodes, totalNodes: nodes.length };
   }, [dataArr, orientation]);
 
-  // ── Render High-DPI Canvas ───────────────────────────────────
+  // ── Render High-DPI Canvas ────────────────────────────────────────────────
   useEffect(() => {
     if (minimized) return;
     const canvas = canvasRef.current;
@@ -258,17 +400,17 @@ export function MiniMap<T = Record<string, unknown>>({
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // 0. Draw Viewport Indicator Lens (if scrolling active)
+    // ── 0. Viewport Indicator Lens ────────────────────────────────────────
     if (viewportBox) {
       const vx = viewportBox.x * CANVAS_WIDTH;
       const vy = viewportBox.y * CANVAS_HEIGHT;
       const vw = Math.max(14, viewportBox.w * CANVAS_WIDTH);
       const vh = Math.max(14, viewportBox.h * CANVAS_HEIGHT);
 
-      ctx.fillStyle = 'rgba(96, 165, 250, 0.12)';
+      ctx.fillStyle = palette.primaryGlow12;
       ctx.fillRect(vx, vy, vw, vh);
 
-      ctx.strokeStyle = 'rgba(96, 165, 250, 0.5)';
+      ctx.strokeStyle = palette.primaryGlow50;
       ctx.lineWidth = 1;
       ctx.strokeRect(vx + 0.5, vy + 0.5, vw - 1, vh - 1);
     }
@@ -276,14 +418,13 @@ export function MiniMap<T = Record<string, unknown>>({
     const nodeMap = new Map<string, LayoutItem<T>>();
     layoutNodes.forEach((n) => nodeMap.set(n.id, n));
 
-    // 1. Draw Connector Lines
+    // ── 1. Draw Connector Lines ───────────────────────────────────────────
     layoutNodes.forEach((parent) => {
       parent.childrenIds.forEach((childId) => {
         const child = nodeMap.get(childId);
         if (!child) return;
 
-        const isHighlighted =
-          highlightPathIds?.has(parent.id) && highlightPathIds?.has(child.id);
+        const isHighlighted = highlightPathIds?.has(parent.id) && highlightPathIds?.has(child.id);
 
         ctx.beginPath();
         if (orientation === 'vertical') {
@@ -301,12 +442,12 @@ export function MiniMap<T = Record<string, unknown>>({
         }
 
         if (isHighlighted) {
-          ctx.strokeStyle = '#60a5fa';
+          ctx.strokeStyle = palette.primarySolid;
           ctx.lineWidth = 2;
-          ctx.shadowColor = '#60a5fa';
+          ctx.shadowColor = palette.primarySolid;
           ctx.shadowBlur = 6;
         } else {
-          ctx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
+          ctx.strokeStyle = palette.connectorDefault;
           ctx.lineWidth = 1.2;
           ctx.shadowBlur = 0;
         }
@@ -315,7 +456,7 @@ export function MiniMap<T = Record<string, unknown>>({
       });
     });
 
-    // 2. Draw Nodes
+    // ── 2. Draw Nodes ─────────────────────────────────────────────────────
     layoutNodes.forEach((node) => {
       const isFocused = focusedNodeId === node.id;
       const isSelected = selectedIds?.has(node.id) ?? false;
@@ -325,70 +466,70 @@ export function MiniMap<T = Record<string, unknown>>({
       const y = node.canvasY;
 
       if (isFocused) {
-        // Outer pulsing focus ring
+        // Outer pulsing focus ring using primary color
         ctx.beginPath();
         ctx.arc(x, y, 7.5, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(96, 165, 250, 0.25)';
+        ctx.fillStyle = palette.primaryGlow25;
         ctx.fill();
-        ctx.strokeStyle = '#60a5fa';
+        ctx.strokeStyle = palette.primarySolid;
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
         // Core dot
         ctx.beginPath();
         ctx.arc(x, y, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#60a5fa';
+        ctx.fillStyle = palette.primarySolid;
         ctx.fill();
 
-        // Inner white shine
+        // Inner shine dot
         ctx.beginPath();
         ctx.arc(x, y, 1.5, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = palette.shineFill;
         ctx.fill();
       } else if (isOnPath) {
-        // Glowing cyan path dot
+        // Glowing path dot — slightly shifted hue from primary
         ctx.beginPath();
         ctx.arc(x, y, 6, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+        ctx.fillStyle = palette.pathGlow;
         ctx.fill();
 
         ctx.beginPath();
         ctx.arc(x, y, 3.5, 0, Math.PI * 2);
-        ctx.fillStyle = '#38bdf8';
+        ctx.fillStyle = palette.pathSolid;
         ctx.fill();
       } else if (isSelected) {
-        // Glowing violet selected dot
+        // Selected dot — shifted towards violet
         ctx.beginPath();
         ctx.arc(x, y, 6, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(167, 139, 250, 0.25)';
+        ctx.fillStyle = palette.selectedGlow;
         ctx.fill();
 
         ctx.beginPath();
         ctx.arc(x, y, 3.5, 0, Math.PI * 2);
-        ctx.fillStyle = '#a78bfa';
+        ctx.fillStyle = palette.selectedSolid;
         ctx.fill();
       } else if (node.isRoot) {
-        // Root node
+        // Root node — uses primary color at full opacity
         ctx.beginPath();
         ctx.arc(x, y, 4.5, 0, Math.PI * 2);
-        ctx.fillStyle = '#818cf8';
+        ctx.fillStyle = palette.rootSolid;
         ctx.fill();
-        ctx.strokeStyle = 'rgba(129, 140, 248, 0.5)';
+        ctx.strokeStyle = palette.rootRing;
         ctx.lineWidth = 1;
         ctx.stroke();
       } else {
-        // Regular node
+        // Regular node — uses nodeColor
         ctx.beginPath();
         ctx.arc(x, y, 3, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(148, 163, 184, 0.75)';
+        ctx.fillStyle = palette.regularFill;
         ctx.fill();
       }
     });
 
     ctx.restore();
-  }, [layoutNodes, focusedNodeId, highlightPathIds, selectedIds, orientation, minimized, viewportBox]);
+  }, [layoutNodes, focusedNodeId, highlightPathIds, selectedIds, orientation, minimized, viewportBox, palette]);
 
-  // ── Panning & Navigation ─────────────────────────────────────
+  // ── Panning & Navigation ──────────────────────────────────────────────────
   const panToCanvasCoords = useCallback((mouseX: number, mouseY: number, smooth = true) => {
     const container = containerRef?.current;
     if (!container) return;
@@ -409,7 +550,7 @@ export function MiniMap<T = Record<string, unknown>>({
     });
   }, [containerRef, scale, translate, onNavigate]);
 
-  // ── Hover & Click Interactions ───────────────────────────────
+  // ── Hover & Click Interactions ────────────────────────────────────────────
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       const canvas = canvasRef.current;
@@ -492,14 +633,25 @@ export function MiniMap<T = Record<string, unknown>>({
 
   return (
     <div
-      className={`tc-minimap ${posClass} ${minimized ? 'tc-minimap--minimized' : ''}`}
+      ref={rootRef}
+      className={`tc-minimap ${posClass} ${minimized ? 'tc-minimap--minimized' : ''} ${className}`}
       title="Tree Radar Overview"
+      style={shellStyle}
     >
       <div className="tc-minimap__header">
         <div className="tc-minimap__badge">
-          <span className="tc-minimap__indicator" />
-          <span className="tc-minimap__title">Radar</span>
-          <span className="tc-minimap__count">{totalNodes}</span>
+          <span className="tc-minimap__indicator" style={{ background: palette.primarySolid, boxShadow: `0 0 6px ${palette.primarySolid}` }} />
+          <span className="tc-minimap__title" style={{ color: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(148,163,184,1)' }}>MiniMap</span>
+          <span
+            className="tc-minimap__count"
+            style={{
+              color: palette.primarySolid,
+              background: palette.primaryGlow12,
+              border: `1px solid ${palette.primaryGlow50}`,
+            }}
+          >
+            {totalNodes}
+          </span>
         </div>
 
         <div className="tc-minimap__actions">
@@ -508,12 +660,12 @@ export function MiniMap<T = Record<string, unknown>>({
             onClick={handleCyclePosition}
             title={`Current position: ${position}. Click to move corner.`}
           >
-            {/* 4-corner quadrant switcher icon */}
+            {/* 4-corner quadrant switcher icon — active corner uses primary color */}
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <rect x="1.5" y="1.5" width="3.5" height="3.5" rx="1" fill={position === 'top-left' ? '#60a5fa' : 'currentColor'} opacity={position === 'top-left' ? 1 : 0.4}/>
-              <rect x="7" y="1.5" width="3.5" height="3.5" rx="1" fill={position === 'top-right' ? '#60a5fa' : 'currentColor'} opacity={position === 'top-right' ? 1 : 0.4}/>
-              <rect x="1.5" y="7" width="3.5" height="3.5" rx="1" fill={position === 'bottom-left' ? '#60a5fa' : 'currentColor'} opacity={position === 'bottom-left' ? 1 : 0.4}/>
-              <rect x="7" y="7" width="3.5" height="3.5" rx="1" fill={position === 'bottom-right' ? '#60a5fa' : 'currentColor'} opacity={position === 'bottom-right' ? 1 : 0.4}/>
+              <rect x="1.5" y="1.5" width="3.5" height="3.5" rx="1" fill={position === 'top-left' ? palette.activeRect : 'currentColor'} opacity={position === 'top-left' ? 1 : 0.4} />
+              <rect x="7" y="1.5" width="3.5" height="3.5" rx="1" fill={position === 'top-right' ? palette.activeRect : 'currentColor'} opacity={position === 'top-right' ? 1 : 0.4} />
+              <rect x="1.5" y="7" width="3.5" height="3.5" rx="1" fill={position === 'bottom-left' ? palette.activeRect : 'currentColor'} opacity={position === 'bottom-left' ? 1 : 0.4} />
+              <rect x="7" y="7" width="3.5" height="3.5" rx="1" fill={position === 'bottom-right' ? palette.activeRect : 'currentColor'} opacity={position === 'bottom-right' ? 1 : 0.4} />
             </svg>
           </button>
 
@@ -524,11 +676,11 @@ export function MiniMap<T = Record<string, unknown>>({
           >
             {minimized ? (
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M2 5L6 9L10 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M2 5L6 9L10 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             ) : (
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M2 7L6 3L10 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M2 7L6 3L10 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             )}
           </button>
@@ -536,7 +688,7 @@ export function MiniMap<T = Record<string, unknown>>({
       </div>
 
       {!minimized && (
-        <div className="tc-minimap__canvas-container">
+        <div className="tc-minimap__canvas-container" style={canvasContainerStyle}>
           <canvas
             ref={canvasRef}
             className="tc-minimap__canvas"
@@ -553,7 +705,11 @@ export function MiniMap<T = Record<string, unknown>>({
           {hoveredNode && (
             <div
               className="tc-minimap__tooltip"
-              style={{ left: hoveredNode.x, top: hoveredNode.y }}
+              style={{
+                left: hoveredNode.x,
+                top: hoveredNode.y,
+                borderColor: palette.primaryGlow50,
+              }}
             >
               {hoveredNode.label}
             </div>

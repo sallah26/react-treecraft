@@ -239,6 +239,7 @@ export function TreeBranch<T>({
     isSelected,
     isFocused,
     isOnHighlightedPath: isOnPath,
+    isOnPath,
     toggleCollapse: () => onToggleCollapse(node.id),
   });
 

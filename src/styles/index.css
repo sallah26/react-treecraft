@@ -139,7 +139,8 @@
 .tc-branch--horizontal {
   display: flex;
   flex-direction: row;
-  align-items: center; /* Vertically centers parent on the Y-axis */
+  align-items: center;
+  /* Vertically centers parent on the Y-axis */
   position: relative;
   flex-shrink: 0;
   margin: 0;
@@ -150,7 +151,8 @@
 .tc-subtree--horizontal {
   display: flex;
   flex-direction: row;
-  align-items: center; /* Keeps children column vertically centered */
+  align-items: center;
+  /* Keeps children column vertically centered */
   height: 100%;
 }
 
@@ -217,6 +219,7 @@
   from {
     stroke-dashoffset: 16;
   }
+
   to {
     stroke-dashoffset: 0;
   }
@@ -232,18 +235,18 @@
 }
 
 .tc-node-wrapper--focused .tc-node-inner {
-  box-shadow: var(--tc-focus-glow);
-  outline: var(--tc-line-width) solid var(--tc-focus-color);
-  border-radius: 8px;
+  box-shadow: var(--tc-focus-glow), 0 0 20px rgba(56, 189, 248, 0.35);
+  outline: max(2px, var(--tc-line-width)) solid var(--tc-focus-color);
+  border-radius: 12px;
 }
 
 .tc-node-wrapper--selected .tc-node-inner {
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
-  outline: var(--tc-line-width) solid var(--tc-selected-color);
-  border-radius: 8px;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35), 0 0 24px rgba(99, 102, 241, 0.4);
+  outline: max(2px, var(--tc-line-width)) solid var(--tc-selected-color);
+  border-radius: 12px;
 }
 
-.tc-node-wrapper--on-path > .tc-node-inner {
+.tc-node-wrapper--on-path>.tc-node-inner {
   opacity: 1;
 }
 
@@ -336,36 +339,66 @@
 .tc-anim-fade-enter {
   animation: tc-fade-in var(--tc-animation-duration) ease forwards;
 }
+
 @keyframes tc-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 /* slide (from top) */
 .tc-anim-slide-enter {
   animation: tc-slide-in var(--tc-animation-duration) ease forwards;
 }
+
 @keyframes tc-slide-in {
-  from { opacity: 0; transform: translateY(-8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* zoom */
 .tc-anim-zoom-enter {
   animation: tc-zoom-in var(--tc-animation-duration) ease forwards;
 }
+
 @keyframes tc-zoom-in {
-  from { opacity: 0; transform: scale(0.92); }
-  to   { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* bounce */
 .tc-anim-bounce-enter {
   animation: tc-bounce-in var(--tc-animation-duration) cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
+
 @keyframes tc-bounce-in {
-  from { opacity: 0; transform: scale(0.6); }
-  to   { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* flip */
@@ -374,31 +407,52 @@
   transform-style: preserve-3d;
   backface-visibility: hidden;
 }
+
 @keyframes tc-flip-in {
-  from { opacity: 0; transform: perspective(400px) rotateY(-90deg); }
-  to   { opacity: 1; transform: perspective(400px) rotateY(0deg); }
+  from {
+    opacity: 0;
+    transform: perspective(400px) rotateY(-90deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: perspective(400px) rotateY(0deg);
+  }
 }
 
 /* blur */
 .tc-anim-blur-enter {
   animation: tc-blur-in var(--tc-animation-duration) ease forwards;
 }
+
 @keyframes tc-blur-in {
-  from { opacity: 0; filter: blur(8px); transform: scale(0.97); }
-  to   { opacity: 1; filter: blur(0px); transform: scale(1); }
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0px);
+    transform: scale(1);
+  }
 }
 
 /* ── MiniMap ─────────────────────────────────────────────────── */
 .tc-minimap {
   position: absolute;
   z-index: 100;
-  background: rgba(15, 23, 42, 0.88);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  /* background, border, box-shadow are now injected dynamically by MiniMap.tsx
+     to use the project's --background, --border CSS variables.
+     These fallback values remain for environments where inline styles may be stripped. */
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   padding: 8px 10px 10px;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.04);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -406,10 +460,214 @@
   transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.tc-minimap--bottom-right { bottom: 16px; right: 16px; }
-.tc-minimap--top-right    { top: 16px; right: 16px; }
-.tc-minimap--bottom-left  { bottom: 16px; left: 16px; }
-.tc-minimap--top-left     { top: 16px; left: 16px; }
+/* ── TreeSearch ──────────────────────────────────────────────── */
+.tc-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tc-search__wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--tc-search-bg, var(--background, rgba(15, 23, 42, 0.85)));
+  border: 1px solid var(--tc-search-border, var(--border, rgba(255, 255, 255, 0.1)));
+  border-radius: 10px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  transition: all 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tc-search__wrapper:hover {
+  border-color: var(--tc-search-border-hover, var(--border, rgba(255, 255, 255, 0.2)));
+}
+
+.tc-search__wrapper:focus-within,
+.tc-search__wrapper--focused {
+  border-color: var(--tc-search-primary, var(--tc-focus-color, #6366f1));
+  box-shadow: 0 0 0 3px var(--tc-search-glow, var(--tc-focus-glow, rgba(99, 102, 241, 0.25))), 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.tc-search__icon {
+  position: absolute;
+  left: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground, #94a3b8);
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.tc-search__input {
+  width: 100%;
+  height: 36px;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--foreground, #e2e8f0);
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  padding: 0 34px 0 34px;
+}
+
+.tc-search__input::placeholder {
+  color: var(--muted-foreground, #64748b);
+  opacity: 0.85;
+}
+
+.tc-search__clear {
+  position: absolute;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground, #94a3b8);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  transition: all 120ms ease;
+}
+
+.tc-search__clear:hover {
+  color: var(--foreground, #ffffff);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.tc-search__results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  min-width: 100%;
+  max-height: 260px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 5px;
+  list-style: none;
+  background: var(--tc-search-popover, var(--popover, var(--background, rgba(15, 23, 42, 0.96))));
+  border: 1px solid var(--tc-search-border, var(--border, rgba(255, 255, 255, 0.12)));
+  border-radius: 10px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tc-search__results::-webkit-scrollbar {
+  width: 5px;
+}
+
+.tc-search__results::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 999px;
+}
+
+.tc-search__results::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+.tc-search__result-item {
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--foreground, #cbd5e1);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  transition: all 120ms ease;
+  user-select: none;
+}
+
+.tc-search__result-item:hover,
+.tc-search__result-item--active {
+  background: var(--tc-search-item-hover, rgba(99, 102, 241, 0.16));
+  color: var(--tc-search-item-hover-color, #ffffff);
+}
+
+.tc-search__result-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.tc-search__result-label {
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tc-search__result-sub {
+  font-size: 11px;
+  color: var(--muted-foreground, #94a3b8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tc-search__result-item:hover .tc-search__result-sub,
+.tc-search__result-item--active .tc-search__result-sub {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tc-search__result-action {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--tc-search-primary, var(--tc-focus-color, #6366f1));
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: all 120ms ease;
+  flex-shrink: 0;
+}
+
+.tc-search__result-item:hover .tc-search__result-action,
+.tc-search__result-item--active .tc-search__result-action {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.tc-minimap--bottom-right {
+  bottom: 16px;
+  right: 16px;
+}
+
+.tc-minimap--top-right {
+  top: 16px;
+  right: 16px;
+}
+
+.tc-minimap--bottom-left {
+  bottom: 16px;
+  left: 16px;
+}
+
+.tc-minimap--top-left {
+  top: 16px;
+  left: 16px;
+}
 
 .tc-minimap--minimized {
   padding: 6px 10px;
@@ -432,15 +690,9 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 8px #10b981;
-  animation: tc-radar-pulse 2s infinite;
-}
-
-@keyframes tc-radar-pulse {
-  0%   { transform: scale(0.9); opacity: 0.7; }
-  50%  { transform: scale(1.2); opacity: 1; box-shadow: 0 0 10px #10b981; }
-  100% { transform: scale(0.9); opacity: 0.7; }
+  /* background and box-shadow are injected dynamically via inline style by MiniMap.tsx */
+  background: #60a5fa;
+  box-shadow: 0 0 6px #60a5fa;
 }
 
 .tc-minimap__title {
@@ -448,16 +700,18 @@
   font-weight: 700;
   letter-spacing: 0.8px;
   text-transform: uppercase;
-  color: #94a3b8;
+  /* color is injected dynamically by MiniMap.tsx */
+  color: rgba(148, 163, 184, 1);
   font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 .tc-minimap__count {
   font-size: 10px;
   font-weight: 600;
-  color: #818cf8;
-  background: rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  /* color, background and border are injected dynamically by MiniMap.tsx */
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.4);
   padding: 1px 6px;
   border-radius: 10px;
 }
@@ -471,7 +725,7 @@
 .tc-minimap__btn {
   background: transparent;
   border: none;
-  color: #64748b;
+  color: rgba(100, 116, 139, 0.9);
   cursor: pointer;
   padding: 2px;
   display: flex;
@@ -482,16 +736,17 @@
 }
 
 .tc-minimap__btn:hover {
-  color: #e2e8f0;
-  background: rgba(255, 255, 255, 0.08);
+  color: currentColor;
+  background: rgba(128, 128, 128, 0.15);
 }
 
 .tc-minimap__canvas-container {
   position: relative;
   border-radius: 8px;
   overflow: hidden;
-  background: rgba(10, 15, 29, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  /* background and border are injected dynamically by MiniMap.tsx */
+  background: rgba(10, 15, 29, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.04);
   cursor: crosshair;
 }
 
@@ -504,7 +759,8 @@
   pointer-events: none;
   z-index: 10;
   background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(99, 102, 241, 0.4);
+  /* borderColor is injected dynamically by MiniMap.tsx */
+  border: 1px solid rgba(96, 165, 250, 0.4);
   color: #f1f5f9;
   padding: 4px 8px;
   border-radius: 6px;
@@ -658,6 +914,7 @@
     opacity: 0;
     transform: translateY(-4px) scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);

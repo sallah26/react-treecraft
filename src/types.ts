@@ -2,7 +2,7 @@
 //  react-treecraft — Core TypeScript Types
 // ─────────────────────────────────────────────────────────────
 
-import type { CSSProperties, ReactNode, MouseEvent as ReactMouseEvent } from 'react';
+import type { CSSProperties, ReactNode, MouseEvent as ReactMouseEvent, RefObject } from 'react';
 
 // ── 1. Data Model ──────────────────────────────────────────────────────────
 
@@ -43,6 +43,8 @@ export interface RenderNodeProps<T = Record<string, unknown>> {
   isSelected: boolean;
   /** Whether this node lies on the highlighted ancestor path */
   isOnHighlightedPath: boolean;
+  /** Alias for isOnHighlightedPath */
+  isOnPath?: boolean;
   /** Programmatically toggle collapsed state of this node */
   toggleCollapse: () => void;
 }
@@ -77,6 +79,14 @@ export interface TreeCraftTheme {
   levelGap?: number;
   /** Animation duration in ms. Default: 200 */
   animationDuration?: number;
+  /** Mini-map custom background color override (defaults to var(--background)) */
+  miniMapBackground?: string;
+  /** Mini-map custom primary accent color override (defaults to var(--primary)) */
+  miniMapPrimaryColor?: string;
+  /** Mini-map custom border color override (defaults to var(--border)) */
+  miniMapBorderColor?: string;
+  /** Mini-map custom regular node color override */
+  miniMapNodeColor?: string;
 }
 
 // ── 4. Animation ────────────────────────────────────────────────────────────
@@ -87,9 +97,60 @@ export type AnimationPreset = 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip' | 'b
 
 export type Orientation = 'vertical' | 'horizontal';
 
-// ── 5b. MiniMap Position ────────────────────────────────────────────────────
+// ── 5b. MiniMap Position & Props ────────────────────────────────────────────
 
 export type MiniMapPosition = 'top-right' | 'bottom-right' | 'top-left' | 'bottom-left';
+
+export interface MiniMapProps<T = Record<string, unknown>> {
+  /** The tree data (root node or array of roots) */
+  data: TreeNode<T> | TreeNode<T>[];
+  /** Ref to the scroll/viewport container element */
+  containerRef?: RefObject<HTMLDivElement | null>;
+  /** Tree layout orientation */
+  orientation?: Orientation;
+  /** Currently focused node ID */
+  focusedNodeId?: string;
+  /** Set of node IDs on the active ancestor path */
+  highlightPathIds?: Set<string>;
+  /** Set of selected node IDs */
+  selectedIds?: Set<string>;
+  /** Corner dock position */
+  position?: MiniMapPosition;
+  /** Callback when position changes via quadrant switcher */
+  onPositionChange?: (position: MiniMapPosition) => void;
+  /** Zoom scale factor (when zoomable is enabled) */
+  scale?: number;
+  /** Translation coordinates (when zoomable is enabled) */
+  translate?: { x: number; y: number };
+  /** Callback to pan/navigate viewport */
+  onNavigate?: (x: number, y: number) => void;
+  /** Callback when a node dot is clicked in the minimap */
+  onNodeClick?: (node: TreeNode<T>) => void;
+  /**
+   * Primary accent color override.
+   * If not provided, dynamically defaults to the project's `--primary` / `--color-primary` CSS variable, or `#60a5fa`.
+   */
+  primaryColor?: string;
+  /**
+   * Background color override.
+   * If not provided, dynamically defaults to the project's `--background` / `--color-background` CSS variable, or `rgba(15, 23, 42, 0.88)`.
+   */
+  backgroundColor?: string;
+  /**
+   * Border color override.
+   * If not provided, dynamically defaults to the project's `--border` / `--color-border` CSS variable, or `rgba(255, 255, 255, 0.1)`.
+   */
+  borderColor?: string;
+  /**
+   * Node dot color override.
+   * If not provided, dynamically defaults to the project's `--tc-line-color` or theme-adaptive slate.
+   */
+  nodeColor?: string;
+  /** Optional custom CSS class name */
+  className?: string;
+  /** Optional inline styles */
+  style?: CSSProperties;
+}
 
 // ── 6. Main Component Props ────────────────────────────────────────────────
 
@@ -226,7 +287,7 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
    */
   multiSelect?: boolean;
   /** Controlled selected node ids */
-  selectedIds?: string[];
+  selectedIds?: string[] | Set<string>;
   /** Called when selection changes */
   onSelect?: (ids: string[]) => void;
 
@@ -305,6 +366,14 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
   miniMapPosition?: MiniMapPosition;
   /** Called when the user changes the mini-map corner position */
   onMiniMapPositionChange?: (position: MiniMapPosition) => void;
+  /** Mini-map custom background color override (defaults to var(--background)) */
+  miniMapBackground?: string;
+  /** Mini-map custom primary accent color override (defaults to var(--primary)) */
+  miniMapPrimaryColor?: string;
+  /** Mini-map custom border color override (defaults to var(--border)) */
+  miniMapBorderColor?: string;
+  /** Mini-map custom regular node color override */
+  miniMapNodeColor?: string;
 }
 
 // ── Drag & Drop Types ──────────────────────────────────────────────────────
@@ -409,6 +478,12 @@ export interface TreeCraftRef {
   viewport: HTMLDivElement | null;
   /** The canvas element */
   canvas: HTMLDivElement | null;
+  /** Scroll and center the viewport/canvas on a specific node */
+  scrollToNode: (nodeId: string) => void;
+  /** Programmatically select a node (and highlight path if selectPath is active) */
+  selectNode: (nodeId: string) => void;
+  /** Programmatically focus / highlight a node */
+  focusNode: (nodeId: string) => void;
   /** Export current tree as high-resolution PNG data URL */
   exportPng: (options?: PngExportOptions) => Promise<string>;
   /** Download current tree as PNG file */

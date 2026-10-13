@@ -59,6 +59,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     readOnly = false,
     selectable = false,
     selectPath = false,
+    selectedIds: propSelectedIds,
     onSelect,
     onNodeClick,
     focusedNodeId,
@@ -67,6 +68,10 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     miniMap = false,
     miniMapPosition = 'bottom-right',
     onMiniMapPositionChange,
+    miniMapBackground,
+    miniMapPrimaryColor,
+    miniMapBorderColor,
+    miniMapNodeColor,
     // drag and drop
     draggableNodes = false,
     draggable = false,
@@ -115,7 +120,15 @@ function TreeCraftInternal<T = Record<string, unknown>>(
   const [internalCollapsedIds, setInternalCollapsedIds] = useState<Set<string>>(initCollapsedIds);
 
   const activeCollapsedIds = controlledCollapsedSet ?? internalCollapsedIds;
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const isControlledSelect = propSelectedIds !== undefined;
+  const controlledSelectedSet = useMemo(() => {
+    if (propSelectedIds === undefined) return undefined;
+    return propSelectedIds instanceof Set ? propSelectedIds : new Set(propSelectedIds);
+  }, [propSelectedIds]);
+
+  const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set());
+  const activeSelectedIds = controlledSelectedSet ?? internalSelectedIds;
+
   const [internalFocusedId, setInternalFocusedId] = useState<string | undefined>();
   const [internalHighlightPath, setInternalHighlightPath] = useState<string | undefined>();
 
@@ -152,34 +165,36 @@ function TreeCraftInternal<T = Record<string, unknown>>(
   }, [isControlledCollapse]);
 
   const toggleSelect = useCallback((id: string, path: string[]) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      const isSelected = next.has(id);
-      if (selectPath) {
-        if (isSelected) {
-          // Deselect the node and its entire ancestor chain
-          path.forEach((ancestorId) => next.delete(ancestorId));
-          setInternalHighlightPath(undefined);
-          setInternalFocusedId(undefined);
-        } else {
-          // Select this specific path (clear old path)
-          next.clear();
-          path.forEach((ancestorId) => next.add(ancestorId));
-          setInternalHighlightPath(id);
-          setInternalFocusedId(id);
-        }
+    const isSelected = activeSelectedIds.has(id);
+    const next = new Set(activeSelectedIds);
+    if (selectPath) {
+      if (isSelected) {
+        // Deselect the node and its entire ancestor chain
+        path.forEach((ancestorId) => next.delete(ancestorId));
+        setInternalHighlightPath(undefined);
+        setInternalFocusedId(undefined);
       } else {
-        // Individual node toggle
-        if (isSelected) {
-          next.delete(id);
-        } else {
-          next.add(id);
-        }
+        // Select this specific path (clear old path)
+        next.clear();
+        path.forEach((ancestorId) => next.add(ancestorId));
+        setInternalHighlightPath(id);
+        setInternalFocusedId(id);
       }
-      onSelect?.([...next]);
-      return next;
-    });
-  }, [selectPath, onSelect]);
+    } else {
+      // Individual node toggle
+      if (isSelected) {
+        next.delete(id);
+        if (activeFocusedId === id) setInternalFocusedId(undefined);
+      } else {
+        next.add(id);
+        setInternalFocusedId(id);
+      }
+    }
+    if (!isControlledSelect) {
+      setInternalSelectedIds(next);
+    }
+    onSelect?.([...next]);
+  }, [activeSelectedIds, selectPath, isControlledSelect, onSelect, activeFocusedId]);
 
   // ── Highlighted path ──────────────────────────────────────
   const highlightPathIds = useMemo<Set<string> | undefined>(() => {
@@ -311,6 +326,83 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     setTransform({ scale: currentScale, x: nextX, y: nextY });
   }, []);
 
+  const scrollToNode = useCallback(
+    (nodeId: string) => {
+      const viewport = viewportRef.current;
+      const canvas = canvasRef.current;
+      if (!viewport) return;
+      const el = viewport.querySelector(`[data-tc-node-id="${nodeId}"]`) as HTMLElement | null;
+      if (!el) return;
+
+      if (zoomable && canvas) {
+        const nodeRect = el.getBoundingClientRect();
+        const vRect = viewport.getBoundingClientRect();
+        const deltaX = (vRect.left + vRect.width / 2) - (nodeRect.left + nodeRect.width / 2);
+        const deltaY = (vRect.top + vRect.height / 2) - (nodeRect.top + nodeRect.height / 2);
+        const nextX = transformRef.current.x + deltaX;
+        const nextY = transformRef.current.y + deltaY;
+        transformRef.current.x = nextX;
+        transformRef.current.y = nextY;
+        canvas.style.transition = 'transform 260ms cubic-bezier(0.16, 1, 0.3, 1)';
+        canvas.style.transform = `translate(${nextX}px, ${nextY}px) scale(${transformRef.current.scale})`;
+        setTransform((prev) => ({ ...prev, x: nextX, y: nextY }));
+        setTimeout(() => {
+          if (canvas) canvas.style.transition = '';
+        }, 260);
+      } else {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      }
+    },
+    [zoomable],
+  );
+
+  const selectNode = useCallback(
+    (nodeId: string) => {
+      const arr = toArray(data);
+      const chain = getPath(arr, nodeId);
+      const pathIds = chain ? chain.map((n) => n.id) : [nodeId];
+
+      if (chain && chain.length > 1) {
+        const ancestorIds = chain.slice(0, -1).map((n) => n.id);
+        if (!isControlledCollapse) {
+          setInternalCollapsedIds((prev) => {
+            const next = new Set(prev);
+            ancestorIds.forEach((id) => next.delete(id));
+            return next;
+          });
+        }
+        ancestorIds.forEach((id) => onCollapseChange?.(id, false));
+      }
+
+      if (selectPath) {
+        const next = new Set(pathIds);
+        if (!isControlledSelect) {
+          setInternalSelectedIds(next);
+        }
+        setInternalHighlightPath(nodeId);
+        setInternalFocusedId(nodeId);
+        onSelect?.([...next]);
+      } else {
+        const next = new Set([nodeId]);
+        if (!isControlledSelect) {
+          setInternalSelectedIds(next);
+        }
+        setInternalFocusedId(nodeId);
+        onSelect?.([...next]);
+      }
+
+      setTimeout(() => {
+        scrollToNode(nodeId);
+      }, 50);
+    },
+    [data, selectPath, isControlledCollapse, isControlledSelect, onCollapseChange, onSelect, scrollToNode],
+  );
+
+  const focusNode = useCallback((nodeId: string) => {
+    setInternalFocusedId(nodeId);
+    setInternalHighlightPath(nodeId);
+  }, []);
+
   // ── Imperative Ref API ─────────────────────────────────────
   useImperativeHandle(
     ref,
@@ -324,6 +416,9 @@ function TreeCraftInternal<T = Record<string, unknown>>(
       get canvas() {
         return canvasRef.current;
       },
+      scrollToNode,
+      selectNode,
+      focusNode,
       exportPng: async (options?: PngExportOptions) => {
         const el = canvasRef.current ?? containerRef.current;
         if (!el) throw new Error('[react-treecraft] Tree DOM element not found.');
@@ -351,7 +446,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
         downloadJson(data, filename, options);
       },
     }),
-    [data],
+    [data, scrollToNode, selectNode, focusNode],
   );
 
   // ── Annotate data ─────────────────────────────────────────
@@ -415,7 +510,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
                 key={node.id}
                 node={node}
                 collapsedIds={activeCollapsedIds}
-                selectedIds={selectedIds}
+                selectedIds={activeSelectedIds}
                 focusedNodeId={activeFocusedId}
                 highlightPathIds={highlightPathIds}
                 collapsible={collapsible}
@@ -458,12 +553,16 @@ function TreeCraftInternal<T = Record<string, unknown>>(
           orientation={orientation}
           focusedNodeId={activeFocusedId}
           highlightPathIds={highlightPathIds}
-          selectedIds={selectedIds}
+          selectedIds={activeSelectedIds}
           position={miniMapPosition}
           onPositionChange={onMiniMapPositionChange}
           scale={zoomable ? transform.scale : undefined}
           translate={zoomable ? memoizedTranslate : undefined}
           onNavigate={zoomable ? handleNavigate : undefined}
+          primaryColor={miniMapPrimaryColor ?? theme?.miniMapPrimaryColor ?? resolvedHighlightColor}
+          backgroundColor={miniMapBackground ?? theme?.miniMapBackground}
+          borderColor={miniMapBorderColor ?? theme?.miniMapBorderColor}
+          nodeColor={miniMapNodeColor ?? theme?.miniMapNodeColor}
           onNodeClick={(node) => {
             onNodeClick?.(node);
             const el = viewportRef.current?.querySelector(`[data-tc-node-id="${node.id}"]`) as HTMLElement | null;
