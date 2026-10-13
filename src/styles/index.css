@@ -14,9 +14,11 @@
   --tc-focus-glow: 0 0 0 3px rgba(59, 130, 246, 0.25);
   --tc-selected-color: #8b5cf6;
   --tc-collapse-btn-size: 22px;
-  --tc-collapse-btn-bg: #ffffff;
-  --tc-collapse-btn-border: #e2e8f0;
-  --tc-collapse-btn-hover-bg: #f8fafc;
+  --tc-collapse-btn-bg: var(--background, #0f172a);
+  --tc-collapse-btn-border: var(--border, rgba(255, 255, 255, 0.15));
+  --tc-collapse-btn-hover-bg: var(--muted, rgba(255, 255, 255, 0.1));
+  --tc-collapse-btn-color: var(--muted-foreground, #94a3b8);
+  --tc-collapse-btn-hover-color: var(--primary, #3b82f6);
 }
 
 /* ── Root container (fixed frame for positioning overlays) ── */
@@ -276,25 +278,32 @@
   width: var(--tc-collapse-btn-size);
   height: var(--tc-collapse-btn-size);
   border-radius: 50%;
-  border: var(--tc-line-width) solid var(--tc-collapse-btn-border);
-  background: var(--tc-collapse-btn-bg);
+  border: 1px solid var(--border, var(--tc-collapse-btn-border, rgba(255, 255, 255, 0.15)));
+  background: var(--background, var(--tc-collapse-btn-bg, #0f172a));
+  color: var(--muted-foreground, var(--tc-collapse-btn-color, #94a3b8));
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition:
     background var(--tc-animation-duration) ease,
+    border-color var(--tc-animation-duration) ease,
+    color var(--tc-animation-duration) ease,
     transform var(--tc-animation-duration) ease,
     box-shadow var(--tc-animation-duration) ease;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
   outline: none;
   padding: 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .tc-collapse-btn:hover {
-  background: var(--tc-collapse-btn-hover-bg);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-  transform: translateX(-50%) scale(1.12);
+  background: var(--muted, var(--tc-collapse-btn-hover-bg, rgba(255, 255, 255, 0.1)));
+  border-color: var(--primary, var(--tc-focus-color, #3b82f6));
+  color: var(--primary, var(--tc-focus-color, #3b82f6));
+  box-shadow: 0 0 10px var(--tc-focus-glow, rgba(59, 130, 246, 0.3)), 0 2px 8px rgba(0, 0, 0, 0.2);
+  transform: translateX(-50%) scale(1.15);
 }
 
 .tc-collapse-btn:active {
@@ -302,10 +311,10 @@
 }
 
 .tc-collapse-btn svg {
-  transition: transform var(--tc-animation-duration) ease;
-  width: 11px;
-  height: 11px;
-  color: #64748b;
+  transition: transform var(--tc-animation-duration) ease, color var(--tc-animation-duration) ease;
+  width: 12px;
+  height: 12px;
+  color: currentColor;
 }
 
 .tc-collapse-btn--expanded svg {
@@ -322,7 +331,7 @@
 }
 
 .tc-root--horizontal .tc-collapse-btn:hover {
-  transform: translateY(-50%) scale(1.12);
+  transform: translateY(-50%) scale(1.15);
 }
 
 .tc-root--horizontal .tc-collapse-btn svg {

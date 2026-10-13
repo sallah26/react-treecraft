@@ -478,6 +478,8 @@ export interface TreeCraftRef {
   viewport: HTMLDivElement | null;
   /** The canvas element */
   canvas: HTMLDivElement | null;
+  /** Reset canvas zoom/pan state and center viewport */
+  resetView: () => void;
   /** Scroll and center the viewport/canvas on a specific node */
   scrollToNode: (nodeId: string) => void;
   /** Programmatically select a node (and highlight path if selectPath is active) */

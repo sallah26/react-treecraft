@@ -326,6 +326,31 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     setTransform({ scale: currentScale, x: nextX, y: nextY });
   }, []);
 
+  const resetView = useCallback(() => {
+    transformRef.current = { scale: 1, x: 0, y: 0 };
+    setTransform({ scale: 1, x: 0, y: 0 });
+
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.style.transition = 'transform 260ms cubic-bezier(0.16, 1, 0.3, 1)';
+      canvas.style.transform = zoomable ? 'translate(0px, 0px) scale(1)' : '';
+      setTimeout(() => {
+        if (canvas) canvas.style.transition = '';
+      }, 260);
+    }
+
+    const viewport = viewportRef.current;
+    if (viewport && canvas) {
+      const scrollX = Math.max(0, (canvas.scrollWidth - viewport.clientWidth) / 2);
+      const scrollY = Math.max(0, (canvas.scrollHeight - viewport.clientHeight) / 2);
+      viewport.scrollTo({
+        left: scrollX,
+        top: scrollY,
+        behavior: 'smooth',
+      });
+    }
+  }, [zoomable]);
+
   const scrollToNode = useCallback(
     (nodeId: string) => {
       const viewport = viewportRef.current;
@@ -416,6 +441,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
       get canvas() {
         return canvasRef.current;
       },
+      resetView,
       scrollToNode,
       selectNode,
       focusNode,
