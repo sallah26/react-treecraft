@@ -1,7 +1,6 @@
 <div align="center">
 
 <a href="https://www.npmjs.com/package/react-treecraft"><img src="https://img.shields.io/npm/v/react-treecraft.svg?style=flat-square&colorA=0d1117&colorB=6366f1" alt="npm version" /></a>
-<a href="https://www.npmjs.com/package/react-treecraft"><img src="https://img.shields.io/npm/dm/react-treecraft?style=flat-square&colorA=0d1117&colorB=6366f1" alt="npm downloads" /></a>
 <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-6366f1.svg?style=flat-square&colorA=0d1117" alt="MIT License" /></a>
 <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-Ready-6366f1.svg?style=flat-square&colorA=0d1117" alt="TypeScript" /></a>
 
@@ -49,7 +48,7 @@ import 'react-treecraft/styles';
 
 ## Docs & Live Playground
 
-**-> [react-treecraft.vercel.app](https://react-treecraft.vercel.app)**
+**-> [https://react-treecraft.vercel.app](https://react-treecraft.vercel.app)**
 
 Full API reference, interactive demos, and code examples live there.
 
