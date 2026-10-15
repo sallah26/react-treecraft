@@ -1,10 +1,8 @@
-// ─────────────────────────────────────────────────────────────
 //  react-treecraft — Core TypeScript Types
-// ─────────────────────────────────────────────────────────────
 
 import type { CSSProperties, ReactNode, MouseEvent as ReactMouseEvent, RefObject } from 'react';
 
-// ── 1. Data Model ──────────────────────────────────────────────────────────
+//  1. Data Model 
 
 /** The universal tree node shape. T = whatever data your app needs. */
 export interface TreeNode<T = Record<string, unknown>> {
@@ -22,7 +20,7 @@ export interface InternalNode<T = Record<string, unknown>> extends TreeNode<T> {
   children: InternalNode<T>[];
 }
 
-// ── 2. Render Slot Props (what renderNode receives) ────────────────────────
+//  2. Render Slot Props (what renderNode receives) 
 
 export interface RenderNodeProps<T = Record<string, unknown>> {
   /** The current node's data */
@@ -55,7 +53,7 @@ export interface RenderCollapseBtnProps<T = Record<string, unknown>> {
   onToggle: (e: ReactMouseEvent) => void;
 }
 
-// ── 3. Theme / Style ────────────────────────────────────────────────────────
+//  3. Theme / Style 
 
 export type ConnectorType = 'orthogonal' | 'curved' | 'straight';
 export type ConnectorPattern = 'solid' | 'dashed' | 'dotted' | 'flow';
@@ -89,15 +87,15 @@ export interface TreeCraftTheme {
   miniMapNodeColor?: string;
 }
 
-// ── 4. Animation ────────────────────────────────────────────────────────────
+//  4. Animation 
 
 export type AnimationPreset = 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip' | 'blur' | 'none';
 
-// ── 5. Orientation ─────────────────────────────────────────────────────────
+//  5. Orientation 
 
 export type Orientation = 'vertical' | 'horizontal';
 
-// ── 5b. MiniMap Position & Props ────────────────────────────────────────────
+//  5b. MiniMap Position & Props 
 
 export type MiniMapPosition = 'top-right' | 'bottom-right' | 'top-left' | 'bottom-left';
 
@@ -152,16 +150,16 @@ export interface MiniMapProps<T = Record<string, unknown>> {
   style?: CSSProperties;
 }
 
-// ── 6. Main Component Props ────────────────────────────────────────────────
+//  6. Main Component Props 
 
 export interface TreeCraftProps<T = Record<string, unknown>> {
-  // ── Required ──────────────────────────────────────────────
+  //  Required ─
   /** The root node of the tree (or an array of root nodes for a forest) */
   data: TreeNode<T> | TreeNode<T>[];
   /** Slot: render whatever JSX you want for each node */
   renderNode: (props: RenderNodeProps<T>) => ReactNode;
 
-  // ── Collapse Behaviour ────────────────────────────────────
+  //  Collapse Behaviour 
   /**
    * Enable/disable the collapse feature entirely.
    * @default true
@@ -193,7 +191,7 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
   /** Called when any node is clicked */
   onNodeClick?: (node: TreeNode<T>) => void;
 
-  // ── Connector Lines ───────────────────────────────────────
+  //  Connector Lines 
   /**
    * Show/hide connector lines between nodes.
    * @default true
@@ -231,7 +229,7 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
    */
   highlightColor?: string;
 
-  // ── Gap / Spacing Customization ───────────────────────────
+  //  Gap / Spacing Customization 
   /**
    * Spacing between side-by-side sibling nodes on the same level in pixels.
    * In vertical orientation, this is the horizontal gap between sibling columns.
@@ -249,7 +247,7 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
    */
   levelGap?: number;
 
-  // ── Animation ─────────────────────────────────────────────
+  //  Animation 
   /**
    * Animation style for expand/collapse.
    * @default 'fade'
@@ -262,14 +260,14 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
    */
   animationDuration?: number;
 
-  // ── Orientation ───────────────────────────────────────────
+  //  Orientation ─
   /**
    * Tree layout direction.
    * @default 'vertical'
    */
   orientation?: Orientation;
 
-  // ── Selection ─────────────────────────────────────────────
+  //  Selection 
   /**
    * Allow nodes to be clicked to select them individually.
    * @default false
@@ -291,7 +289,7 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
   /** Called when selection changes */
   onSelect?: (ids: string[]) => void;
 
-  // ── Focus & Highlight ─────────────────────────────────────
+  //  Focus & Highlight ─
   /**
    * Programmatically focus/highlight a specific node id.
    * Also highlights the ancestor path to it.
@@ -303,33 +301,33 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
    */
   highlightPath?: string;
 
-  // ── Depth Limiting ────────────────────────────────────────
+  //  Depth Limiting ─
   /**
    * Only render nodes up to this depth.
    * Useful for performance or UI clarity.
    */
   maxDepth?: number;
 
-  // ── Read Only ─────────────────────────────────────────────
+  //  Read Only 
   /**
    * Freeze all interactions. Connectors and layout still work.
    * @default false
    */
   readOnly?: boolean;
 
-  // ── Theming ───────────────────────────────────────────────
+  //  Theming 
   /** Theme overrides. All CSS vars can also be set via stylesheet. */
   theme?: TreeCraftTheme;
 
-  // ── Style & Class ─────────────────────────────────────────
+  //  Style & Class 
   className?: string;
   style?: CSSProperties;
 
-  // ── Node wrapper class (applied to every node container) ──
+  //  Node wrapper class (applied to every node container) 
   nodeClassName?: string;
   nodeStyle?: CSSProperties;
 
-  // ── Drag & Drop ────────────────────────────────────────────
+  //  Drag & Drop 
   /**
    * Enable drag-and-drop node reordering and reparenting.
    * @default false
@@ -349,14 +347,14 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
    */
   canDrop?: CanDropFn;
 
-  // ── Zoom / Pan ─────────────────────────────────────────────
+  //  Zoom / Pan 
   /**
    * Enable built-in scroll-to-zoom + drag-to-pan.
    * @default false
    */
   zoomable?: boolean;
 
-  // ── Mini-Map ───────────────────────────────────────────────
+  //  Mini-Map 
   /**
    * Show a corner mini-map overview of the whole tree.
    * @default false
@@ -376,7 +374,7 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
   miniMapNodeColor?: string;
 }
 
-// ── Drag & Drop Types ──────────────────────────────────────────────────────
+//  Drag & Drop Types 
 
 export type DropPosition = 'inside' | 'before' | 'after';
 
@@ -388,7 +386,7 @@ export interface NodeMoveEvent {
 
 export type CanDropFn = (sourceId: string, targetId: string, position: DropPosition) => boolean;
 
-// ── 7. useTreeCraft Hook Types ─────────────────────────────────────────────
+//  7. useTreeCraft Hook Types 
 
 export interface UseTreeCraftOptions<T = Record<string, unknown>> {
   initialData: TreeNode<T> | TreeNode<T>[];
@@ -398,7 +396,7 @@ export interface UseTreeCraftReturn<T = Record<string, unknown>> {
   /** Current tree data (pass directly to <TreeCraft data={tree.data} />) */
   data: TreeNode<T> | TreeNode<T>[];
 
-  // ── Mutations ──────────────────────────────────────────────
+  //  Mutations ─
   /** Add a child node under parentId */
   addChild: (parentId: string, nodeData: T, id?: string) => void;
   /** Remove a node (and all its descendants) */
@@ -408,7 +406,7 @@ export interface UseTreeCraftReturn<T = Record<string, unknown>> {
   /** Move a node to a new parent or sibling position */
   moveNode: (nodeId: string, targetId: string, position?: DropPosition) => void;
 
-  // ── Collapse State ─────────────────────────────────────────
+  //  Collapse State 
   /** Ids of currently collapsed nodes */
   collapsedIds: Set<string>;
   collapse: (id: string) => void;
@@ -417,19 +415,19 @@ export interface UseTreeCraftReturn<T = Record<string, unknown>> {
   collapseAll: () => void;
   expandAll: () => void;
 
-  // ── Selection State ────────────────────────────────────────
+  //  Selection State ─
   selectedIds: Set<string>;
   select: (id: string) => void;
   deselect: (id: string) => void;
   toggleSelect: (id: string) => void;
   clearSelection: () => void;
 
-  // ── Queries ────────────────────────────────────────────────
+  //  Queries 
   find: (id: string) => TreeNode<T> | null;
   getPath: (id: string) => TreeNode<T>[];   // root → node chain
   toFlat: () => Array<TreeNode<T> & { parentId: string | null }>;
 
-  // ── Utilities ──────────────────────────────────────────────
+  //  Utilities ─
   /** Replace the entire tree */
   setData: (data: TreeNode<T> | TreeNode<T>[]) => void;
   /** Export tree data as JSON string */
@@ -440,7 +438,7 @@ export interface UseTreeCraftReturn<T = Record<string, unknown>> {
   importJson: (jsonString: string) => void;
 }
 
-// ── 8. Export Options & Types ──────────────────────────────────────────────
+//  8. Export Options & Types ─
 
 export type ExportFormat = 'png' | 'svg' | 'json';
 
@@ -469,7 +467,7 @@ export interface JsonExportOptions {
   indent?: number;
 }
 
-// ── 9. TreeCraft Ref API ───────────────────────────────────────────────────
+//  9. TreeCraft Ref API 
 
 export interface TreeCraftRef {
   /** The root container element */
@@ -500,7 +498,7 @@ export interface TreeCraftRef {
   downloadJson: (filename?: string, options?: JsonExportOptions) => void;
 }
 
-// ── 10. TreeExport Companion Component Props ──────────────────────────────
+//  10. TreeExport Companion Component Props 
 
 export interface TreeExportProps<T = Record<string, unknown>> {
   /** Reference to the TreeCraft instance or container element */
