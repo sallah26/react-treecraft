@@ -1,7 +1,7 @@
-/* ─────────────────────────────────────────────────────────────
+/* 
    react-treecraft — Base Styles
    All values are CSS variables → override anything from outside
-   ───────────────────────────────────────────────────────────── */
+    */
 
 :root {
   --tc-line-color: #94a3b8;
@@ -21,7 +21,7 @@
   --tc-collapse-btn-hover-color: var(--primary, #3b82f6);
 }
 
-/* ── Root container (fixed frame for positioning overlays) ── */
+/*  Root container (fixed frame for positioning overlays)  */
 .tc-root {
   display: block;
   position: relative;
@@ -31,7 +31,7 @@
   overflow: hidden;
 }
 
-/* ── Viewport scroll container ──────────────────────────────── */
+/*  Viewport scroll container  */
 .tc-viewport {
   width: 100%;
   height: 100%;
@@ -45,7 +45,7 @@
   display: block;
 }
 
-/* ── Canvas wrapper (centers tree horizontally & vertically) ── */
+/*  Canvas wrapper (centers tree horizontally & vertically)  */
 .tc-canvas {
   display: flex;
   flex-direction: column;
@@ -82,7 +82,7 @@
   justify-content: center;
 }
 
-/* ── Forest (multi-root) ────────────────────────────────────── */
+/*  Forest (multi-root)  */
 .tc-forest {
   display: flex;
   flex-direction: row;
@@ -96,7 +96,7 @@
   align-items: flex-start;
 }
 
-/* ── Vertical Branch ────────────────────────────────────────── */
+/*  Vertical Branch  */
 .tc-branch--vertical {
   display: flex;
   flex-direction: column;
@@ -137,7 +137,7 @@
   flex-shrink: 0;
 }
 
-/* ── Horizontal Branch ──────────────────────────────────────── */
+/*  Horizontal Branch  */
 .tc-branch--horizontal {
   display: flex;
   flex-direction: row;
@@ -180,7 +180,7 @@
   flex-shrink: 0;
 }
 
-/* ── SVG Connector Lines ────────────────────────────────────── */
+/*  SVG Connector Lines  */
 .tc-connector-svg {
   pointer-events: none;
 }
@@ -198,7 +198,7 @@
   transition: stroke var(--tc-animation-duration) ease, filter var(--tc-animation-duration) ease;
 }
 
-/* ── Connector Line Patterns ────────────────────────────────── */
+/*  Connector Line Patterns  */
 .tc-line--solid {
   stroke-dasharray: none;
 }
@@ -227,7 +227,7 @@
   }
 }
 
-/* ── Node wrapper ───────────────────────────────────────────── */
+/*  Node wrapper ─ */
 .tc-node-wrapper {
   position: relative;
   display: flex;
@@ -268,7 +268,7 @@
   cursor: pointer;
 }
 
-/* ── Collapse toggle button ─────────────────────────────────── */
+/*  Collapse toggle button  */
 .tc-collapse-btn {
   position: absolute;
   bottom: calc(var(--tc-collapse-btn-size) / -2);
@@ -321,7 +321,7 @@
   transform: rotate(180deg);
 }
 
-/* ── Horizontal collapse btn ─────────────────────────────────── */
+/*  Horizontal collapse btn  */
 .tc-root--horizontal .tc-collapse-btn {
   bottom: auto;
   right: calc(var(--tc-collapse-btn-size) / -2);
@@ -342,7 +342,7 @@
   transform: rotate(90deg);
 }
 
-/* ── Animations ─────────────────────────────────────────────── */
+/*  Animations  */
 
 /* fade */
 .tc-anim-fade-enter {
@@ -448,7 +448,7 @@
   }
 }
 
-/* ── MiniMap ─────────────────────────────────────────────────── */
+/*  MiniMap ─ */
 .tc-minimap {
   position: absolute;
   z-index: 100;
@@ -469,7 +469,7 @@
   transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* ── TreeSearch ──────────────────────────────────────────────── */
+/*  TreeSearch  */
 .tc-search {
   position: relative;
   display: flex;
@@ -781,7 +781,7 @@
   transition: opacity 100ms ease;
 }
 
-/* ── Drag & Drop Interactions ─────────────────────────────────── */
+/*  Drag & Drop Interactions  */
 .tc-node-card--draggable {
   cursor: grab;
   user-select: none;
@@ -839,7 +839,7 @@
   height: 3px;
 }
 
-/* ── TreeExport Component ─────────────────────────────────────── */
+/*  TreeExport Component ─ */
 .tc-export {
   position: relative;
   display: inline-block;

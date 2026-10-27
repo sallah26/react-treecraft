@@ -1,6 +1,6 @@
-// ─────────────────────────────────────────────────────────────
+// 
 //  TreeBranch — renders one node + its subtree recursively
-// ─────────────────────────────────────────────────────────────
+// 
 import React, { useRef, useState } from 'react';
 import type {
   InternalNode,
@@ -101,7 +101,7 @@ export function TreeBranch<T>({
   const childrenRowRef = useRef<HTMLDivElement>(null);
   const children = (node.children ?? []) as InternalNode<T>[];
 
-  // ── Drag & Drop state ─────────────────────────────────────────
+  //  Drag & Drop state 
   const [dropPosition, setDropPosition] = useState<DropPosition | null>(null);
 
   const isDraggingThis = draggedNodeId === node.id;
@@ -271,7 +271,7 @@ export function TreeBranch<T>({
     </div>
   );
 
-  // ── Horizontal Layout ─────────────────────────────────────────
+  //  Horizontal Layout 
   if (orientation === 'horizontal') {
     return (
       <div className={`tc-branch tc-branch--horizontal ${animClass}`} style={animStyle}>
@@ -338,7 +338,7 @@ export function TreeBranch<T>({
     );
   }
 
-  // ── Vertical (default) Layout ─────────────────────────────────
+  //  Vertical (default) Layout 
   return (
     <div className={`tc-branch tc-branch--vertical ${animClass}`} style={animStyle}>
       {nodeCardEl}

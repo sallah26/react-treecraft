@@ -1,9 +1,9 @@
-// ─────────────────────────────────────────────────────────────
+// 
 //  TreeConnector — SVG Connector Line Renderer
 //  Supports Orthogonal (sharp & rounded), Curved (Bézier),
 //  Straight diagonal lines, customizable stroke patterns,
 //  colors, thickness, and animated flow pulses.
-// ─────────────────────────────────────────────────────────────
+// 
 import React, { useState, useLayoutEffect, useCallback, useRef } from 'react';
 import type { InternalNode, ConnectorType, ConnectorPattern } from '../types';
 
@@ -232,7 +232,7 @@ export function TreeConnector<T>({
   let basePath = '';
   let highlightedPaths: string[] = [];
 
-  // ── 1. Vertical Orientation Paths ─────────────────────────────
+  //  1. Vertical Orientation Paths 
   if (orientation === 'vertical') {
     const midY = height / 2;
 
@@ -306,7 +306,7 @@ export function TreeConnector<T>({
     }
   }
 
-  // ── 2. Horizontal Orientation Paths ───────────────────────────
+  //  2. Horizontal Orientation Paths 
   if (orientation === 'horizontal') {
     const midX = width / 2;
 

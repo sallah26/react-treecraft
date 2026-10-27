@@ -1,6 +1,6 @@
-// ─────────────────────────────────────────────────────────────
+// 
 //  TreeSearch — optional built-in search component
-// ─────────────────────────────────────────────────────────────
+// 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import type { TreeNode } from '../types';
 import { flattenTree } from '../utils/tree-helpers';

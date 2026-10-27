@@ -1,6 +1,6 @@
-// ─────────────────────────────────────────────────────────────
+// 
 //  Color Helpers — Dynamic CSS variable and color parsing
-// ─────────────────────────────────────────────────────────────
+// 
 
 export interface RGBA {
   r: number;

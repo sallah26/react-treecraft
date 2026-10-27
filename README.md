@@ -6,11 +6,13 @@
 
 <br/>
 
-<img src="https://react-treecraft.vercel.app/images/logo-light.png" alt="React TreeCraft" width="100%" />
+<img src="https://treecraft.live/images/logo-light.png" alt="React TreeCraft" width="100%" />
 
 <br/>
 
 <p><strong>A headless, minimal, and highly customizable tree structure builder for React.</strong><br/>Zero assumptions. Full control.</p>
+
+Docs & Live Playground: <a href="https://treecraft.live"><strong> https://treecraft.live</strong></a>
 
 </div>
 
@@ -41,16 +43,9 @@ import 'react-treecraft/styles';
 <TreeCraft
   data={treeData}
   renderNode={({ node }) => <div>{node.data.name}</div>}
+  onNodeClick={(node) => console.log('Clicked:', node.id)}
 />
 ```
-
----
-
-## Docs & Live Playground
-
-**-> [https://react-treecraft.vercel.app](https://react-treecraft.vercel.app)**
-
-Full API reference, interactive demos, and code examples live there.
 
 ---
 

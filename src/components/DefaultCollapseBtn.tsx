@@ -1,6 +1,6 @@
-// ─────────────────────────────────────────────────────────────
+// 
 //  DefaultCollapseBtn — built-in chevron toggle
-// ─────────────────────────────────────────────────────────────
+// 
 import React from 'react';
 
 interface Props {

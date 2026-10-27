@@ -83,7 +83,20 @@ function TreeCraftInternal<T = Record<string, unknown>>(
   ref: ForwardedRef<TreeCraftRef>,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const isDraggable = draggableNodes || draggable;
+
+  // Deprecation warning for draggableNodes
+  useEffect(() => {
+    if (!draggableNodes) return;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((globalThis as any).process?.env?.NODE_ENV === 'production') return;
+    } catch { /* not in node */ }
+    console.warn(
+      '[react-treecraft] The `draggableNodes` prop is deprecated and will be removed in v1.0. Use `draggable` instead.'
+    );
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const isDraggable = draggable || draggableNodes;
 
   const resolvedConnectorType = connectorType ?? theme?.lineType ?? 'orthogonal';
   const resolvedConnectorPattern = connectorPattern ?? theme?.linePattern ?? 'solid';
@@ -94,7 +107,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
   const resolvedNodeGap = nodeGap ?? theme?.nodeGap;
   const resolvedLevelGap = levelGap ?? theme?.levelGap;
 
-  // ── Initial collapsed state ────────────────────────────────
+  //  Initial collapsed state 
   const initCollapsedIds = useMemo<Set<string>>(() => {
     const arr = toArray(data);
     const all = collectAllIds(arr);
@@ -132,7 +145,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
   const [internalFocusedId, setInternalFocusedId] = useState<string | undefined>();
   const [internalHighlightPath, setInternalHighlightPath] = useState<string | undefined>();
 
-  // ── Drag & Drop state ─────────────────────────────────────
+  //  Drag & Drop state ─
   const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
 
   const draggedNodeDescendants = useMemo<Set<string>>(() => {
@@ -196,7 +209,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     onSelect?.([...next]);
   }, [activeSelectedIds, selectPath, isControlledSelect, onSelect, activeFocusedId]);
 
-  // ── Highlighted path ──────────────────────────────────────
+  //  Highlighted path 
   const highlightPathIds = useMemo<Set<string> | undefined>(() => {
     if (!activeHighlightPath) return undefined;
     const arr = toArray(data);
@@ -204,7 +217,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     return chain ? new Set(chain.map((n) => n.id)) : undefined;
   }, [activeHighlightPath, data]);
 
-  // ── Zoom / Pan ────────────────────────────────────────────
+  //  Zoom / Pan 
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
   const transformRef = useRef({ scale: 1, x: 0, y: 0 });
   const isPanning = useRef(false);
@@ -428,7 +441,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     setInternalHighlightPath(nodeId);
   }, []);
 
-  // ── Imperative Ref API ─────────────────────────────────────
+  //  Imperative Ref API ─
   useImperativeHandle(
     ref,
     () => ({
@@ -475,7 +488,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     [data, scrollToNode, selectNode, focusNode],
   );
 
-  // ── Annotate data ─────────────────────────────────────────
+  //  Annotate data 
   const annotatedNodes = useMemo(() => annotate(toArray(data)), [data]);
 
   const rootClasses = [
@@ -486,10 +499,10 @@ function TreeCraftInternal<T = Record<string, unknown>>(
 
   const innerStyle: React.CSSProperties = zoomable
     ? {
-        transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-        transformOrigin: '0 0',
-        cursor: isPanning.current ? 'grabbing' : 'grab',
-      }
+      transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+      transformOrigin: '0 0',
+      cursor: isPanning.current ? 'grabbing' : 'grab',
+    }
     : {};
 
   const lineThemeStyle: React.CSSProperties = {
