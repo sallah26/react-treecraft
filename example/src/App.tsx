@@ -9,7 +9,7 @@ import type {
   ConnectorPattern,
 } from 'react-treecraft';
 
-// ── Custom Dropdown ───────────────────────────────────────────
+//  Custom Dropdown 
 interface DropdownOption<T> {
   value: T;
   label: string;
@@ -51,7 +51,7 @@ function StyledDropdown<T>({
           className={`dropdown__chevron ${open ? 'dropdown__chevron--open' : ''}`}
           width="10" height="10" viewBox="0 0 10 10" fill="none"
         >
-          <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
 
@@ -69,7 +69,7 @@ function StyledDropdown<T>({
               )}
               {opt.value === value && (
                 <svg className="dropdown__item-check" width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               )}
             </button>
@@ -80,7 +80,7 @@ function StyledDropdown<T>({
   );
 }
 
-// ── Sample Data ───────────────────────────────────────────────
+//  Sample Data 
 interface OrgNode {
   name: string;
   role: string;
@@ -132,7 +132,7 @@ const INITIAL_DATA: TreeNode<OrgNode> = {
   ],
 };
 
-// ── Node Card Component ───────────────────────────────────────
+//  Node Card Component ─
 function OrgNodeCard({
   name,
   role,
@@ -166,7 +166,7 @@ function OrgNodeCard({
   );
 }
 
-// ── App Options ───────────────────────────────────────────────
+//  App Options 
 type AnimPreset = 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip' | 'blur' | 'none';
 type Orientation = 'vertical' | 'horizontal';
 type AnimDuration = 100 | 200 | 400 | 600 | 1000;
@@ -177,83 +177,83 @@ type NodeGap = 12 | 24 | 36 | 48 | 64;
 type LevelGap = 20 | 36 | 48 | 64 | 80;
 
 const ANIM_OPTIONS: DropdownOption<AnimPreset>[] = [
-  { value: 'fade',   label: 'Fade',   description: 'Opacity in/out' },
-  { value: 'slide',  label: 'Slide',  description: 'Drop from above' },
-  { value: 'zoom',   label: 'Zoom',   description: 'Scale in/out' },
+  { value: 'fade', label: 'Fade', description: 'Opacity in/out' },
+  { value: 'slide', label: 'Slide', description: 'Drop from above' },
+  { value: 'zoom', label: 'Zoom', description: 'Scale in/out' },
   { value: 'bounce', label: 'Bounce', description: 'Spring overshoot' },
-  { value: 'flip',   label: 'Flip',   description: '3D Y-axis rotate' },
-  { value: 'blur',   label: 'Blur',   description: 'Blur + fade in' },
-  { value: 'none',   label: 'None',   description: 'No animation' },
+  { value: 'flip', label: 'Flip', description: '3D Y-axis rotate' },
+  { value: 'blur', label: 'Blur', description: 'Blur + fade in' },
+  { value: 'none', label: 'None', description: 'No animation' },
 ];
 
 const DURATION_OPTIONS: DropdownOption<AnimDuration>[] = [
-  { value: 100,  label: 'Fast',   description: '100ms' },
-  { value: 200,  label: 'Normal', description: '200ms' },
-  { value: 400,  label: 'Slow',   description: '400ms' },
-  { value: 600,  label: 'Slower', description: '600ms' },
-  { value: 1000, label: 'Glacial',description: '1000ms' },
+  { value: 100, label: 'Fast', description: '100ms' },
+  { value: 200, label: 'Normal', description: '200ms' },
+  { value: 400, label: 'Slow', description: '400ms' },
+  { value: 600, label: 'Slower', description: '600ms' },
+  { value: 1000, label: 'Glacial', description: '1000ms' },
 ];
 
 const NODE_GAP_OPTIONS: DropdownOption<NodeGap>[] = [
-  { value: 12, label: '12px (Tight)',    description: 'Compact side-by-side gap' },
-  { value: 24, label: '24px (Normal)',   description: 'Default sibling spacing' },
-  { value: 36, label: '36px (Relaxed)',  description: 'Spacious sibling spacing' },
-  { value: 48, label: '48px (Wide)',     description: 'Wide sibling spacing' },
-  { value: 64, label: '64px (X-Wide)',   description: 'Maximum sibling spacing' },
+  { value: 12, label: '12px (Tight)', description: 'Compact side-by-side gap' },
+  { value: 24, label: '24px (Normal)', description: 'Default sibling spacing' },
+  { value: 36, label: '36px (Relaxed)', description: 'Spacious sibling spacing' },
+  { value: 48, label: '48px (Wide)', description: 'Wide sibling spacing' },
+  { value: 64, label: '64px (X-Wide)', description: 'Maximum sibling spacing' },
 ];
 
 const LEVEL_GAP_OPTIONS: DropdownOption<LevelGap>[] = [
-  { value: 20, label: '20px (Tight)',    description: 'Short connector height' },
-  { value: 36, label: '36px (Normal)',   description: 'Default level distance' },
-  { value: 48, label: '48px (Relaxed)',  description: 'Roomy parent-child gap' },
-  { value: 64, label: '64px (Deep)',     description: 'Tall parent-child gap' },
-  { value: 80, label: '80px (X-Deep)',   description: 'Maximum level distance' },
+  { value: 20, label: '20px (Tight)', description: 'Short connector height' },
+  { value: 36, label: '36px (Normal)', description: 'Default level distance' },
+  { value: 48, label: '48px (Relaxed)', description: 'Roomy parent-child gap' },
+  { value: 64, label: '64px (Deep)', description: 'Tall parent-child gap' },
+  { value: 80, label: '80px (X-Deep)', description: 'Maximum level distance' },
 ];
 
 const MAP_POS_OPTIONS: DropdownOption<MiniMapPosition>[] = [
   { value: 'bottom-right', label: '↘ Bottom Right', description: 'Lower right corner' },
-  { value: 'bottom-left',  label: '↙ Bottom Left',  description: 'Lower left corner' },
-  { value: 'top-right',    label: '↗ Top Right',    description: 'Upper right corner' },
-  { value: 'top-left',     label: '↖ Top Left',     description: 'Upper left corner' },
+  { value: 'bottom-left', label: '↙ Bottom Left', description: 'Lower left corner' },
+  { value: 'top-right', label: '↗ Top Right', description: 'Upper right corner' },
+  { value: 'top-left', label: '↖ Top Left', description: 'Upper left corner' },
 ];
 
 const CONNECTOR_TYPE_OPTIONS: DropdownOption<ConnectorType>[] = [
   { value: 'orthogonal', label: 'Orthogonal', description: 'Step line with 90° bends' },
-  { value: 'curved',     label: 'Curved',     description: 'Smooth Bézier S-curves' },
-  { value: 'straight',   label: 'Straight',   description: 'Direct diagonal lines' },
+  { value: 'curved', label: 'Curved', description: 'Smooth Bézier S-curves' },
+  { value: 'straight', label: 'Straight', description: 'Direct diagonal lines' },
 ];
 
 const PATTERN_OPTIONS: DropdownOption<ConnectorPattern>[] = [
-  { value: 'solid',  label: 'Solid',  description: 'Clean continuous line' },
+  { value: 'solid', label: 'Solid', description: 'Clean continuous line' },
   { value: 'dashed', label: 'Dashed', description: 'Dashed stroke pattern' },
   { value: 'dotted', label: 'Dotted', description: 'Rounded dotted points' },
-  { value: 'flow',   label: 'Flow',   description: 'Animated flowing pulses' },
+  { value: 'flow', label: 'Flow', description: 'Animated flowing pulses' },
 ];
 
 const ROUNDNESS_OPTIONS: DropdownOption<LineRoundness>[] = [
-  { value: 0,  label: 'Sharp (0px)',    description: 'Crisp 90° right angles' },
-  { value: 6,  label: 'Subtle (6px)',   description: 'Small rounded corner' },
+  { value: 0, label: 'Sharp (0px)', description: 'Crisp 90° right angles' },
+  { value: 6, label: 'Subtle (6px)', description: 'Small rounded corner' },
   { value: 12, label: 'Rounded (12px)', description: 'Balanced smooth corner' },
-  { value: 20, label: 'Smooth (20px)',  description: 'Wide soft corner' },
-  { value: 32, label: 'Extra (32px)',   description: 'Extra smooth bend' },
+  { value: 20, label: 'Smooth (20px)', description: 'Wide soft corner' },
+  { value: 32, label: 'Extra (32px)', description: 'Extra smooth bend' },
 ];
 
 const THICKNESS_OPTIONS: DropdownOption<LineThickness>[] = [
-  { value: 1, label: '1px (Thin)',   description: 'Fine wireframe' },
+  { value: 1, label: '1px (Thin)', description: 'Fine wireframe' },
   { value: 2, label: '2px (Normal)', description: 'Standard line' },
   { value: 3, label: '3px (Medium)', description: 'Prominent stroke' },
-  { value: 4, label: '4px (Thick)',  description: 'Heavy bold line' },
-  { value: 6, label: '6px (Extra)',  description: 'Maximum thickness' },
+  { value: 4, label: '4px (Thick)', description: 'Heavy bold line' },
+  { value: 6, label: '6px (Extra)', description: 'Maximum thickness' },
 ];
 
 const COLOR_OPTIONS: DropdownOption<ColorPreset>[] = [
-  { value: '#94a3b8', label: '🔘 Slate',   description: 'Default slate line' },
-  { value: '#6366f1', label: '🟣 Indigo',  description: 'Vibrant indigo line' },
-  { value: '#06b6d4', label: '🔵 Cyan',    description: 'Neon cyan line' },
+  { value: '#94a3b8', label: '🔘 Slate', description: 'Default slate line' },
+  { value: '#6366f1', label: '🟣 Indigo', description: 'Vibrant indigo line' },
+  { value: '#06b6d4', label: '🔵 Cyan', description: 'Neon cyan line' },
   { value: '#10b981', label: '🟢 Emerald', description: 'Emerald green line' },
-  { value: '#f59e0b', label: '🟠 Amber',   description: 'Warm amber line' },
-  { value: '#f43f5e', label: '🔴 Rose',    description: 'Electric rose line' },
-  { value: '#a855f7', label: '💜 Purple',  description: 'Deep purple line' },
+  { value: '#f59e0b', label: '🟠 Amber', description: 'Warm amber line' },
+  { value: '#f43f5e', label: '🔴 Rose', description: 'Electric rose line' },
+  { value: '#a855f7', label: '💜 Purple', description: 'Deep purple line' },
 ];
 
 export default function App() {
@@ -274,14 +274,14 @@ export default function App() {
   const [highlightPath, setHighlightPath] = useState<string | undefined>();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // ── Connector Customization State ──────────────────────────
+  //  Connector Customization State 
   const [connectorType, setConnectorType] = useState<ConnectorType>('orthogonal');
   const [connectorPattern, setConnectorPattern] = useState<ConnectorPattern>('solid');
   const [lineRoundness, setLineRoundness] = useState<LineRoundness>(12);
   const [lineThickness, setLineThickness] = useState<LineThickness>(2);
   const [lineColor, setLineColor] = useState<ColorPreset>('#94a3b8');
 
-  // ── Gap / Spacing Customization State ─────────────────────
+  //  Gap / Spacing Customization State 
   const [nodeGap, setNodeGap] = useState<NodeGap>(24);
   const [levelGap, setLevelGap] = useState<LevelGap>(36);
 

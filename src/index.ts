@@ -1,6 +1,6 @@
-// ─────────────────────────────────────────────────────────────
+// 
 //  react-treecraft — Public API
-// ─────────────────────────────────────────────────────────────
+// 
 
 // Main component
 export { TreeCraft } from './components/TreeCraft';

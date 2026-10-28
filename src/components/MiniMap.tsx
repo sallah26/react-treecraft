@@ -1,12 +1,12 @@
-// ─────────────────────────────────────────────────────────────
+// 
 //  MiniMap — Glassmorphic interactive corner radar for trees
-// ─────────────────────────────────────────────────────────────
+// 
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import type { TreeNode, MiniMapPosition, MiniMapProps } from '../types';
 import { toArray } from '../utils/tree-helpers';
 import { normalizeColorString, parseColorToRgba, colorWithAlpha, isLightBackground } from '../utils/color-helpers';
 
-// ── Re-export so consumers can import MiniMapProps from the component file too ──
+//  Re-export so consumers can import MiniMapProps from the component file too 
 export type { MiniMapProps };
 
 interface LayoutItem<T> {
@@ -36,7 +36,7 @@ const POSITIONS: MiniMapPosition[] = [
   'top-right',
 ];
 
-// ── Static dark-mode fallbacks (used when no CSS var / prop is found) ─────────
+//  Static dark-mode fallbacks (used when no CSS var / prop is found) 
 const DARK_BG_FALLBACK = 'rgba(15, 23, 42, 0.92)';
 const DARK_BORDER_FALLBACK = 'rgba(255, 255, 255, 0.08)';
 const DARK_PRIMARY_FALLBACK = '#60a5fa';
@@ -110,7 +110,7 @@ export function MiniMap<T = Record<string, unknown>>({
   const tx = translate?.x;
   const ty = translate?.y;
 
-  // ── Resolve dynamic theme colors ────────────────────────────────────────────
+  //  Resolve dynamic theme colors 
   // These are computed once per render but can react to CSS variable changes
   // because they derive from the live DOM via getComputedStyle.
   const resolvedBg = useMemo(
@@ -136,7 +136,7 @@ export function MiniMap<T = Record<string, unknown>>({
   // Determine if the resolved background is light so we can adapt text/icon colors
   const isLight = useMemo(() => isLightBackground(resolvedBg), [resolvedBg]);
 
-  // ── Computed color palette ──────────────────────────────────────────────────
+  //  Computed color palette 
   // From the primary color we derive:
   //   • focused node fill / stroke
   //   • highlighted path line / glow
@@ -184,7 +184,7 @@ export function MiniMap<T = Record<string, unknown>>({
     };
   }, [resolvedPrimary, resolvedNode, isLight]);
 
-  // ── Minimap shell inline styles (background, border) ────────────────────────
+  //  Minimap shell inline styles (background, border) 
   // We inject these so the shell always reflects the resolved colors
   // regardless of the static CSS rules in index.css.
   const shellStyle = useMemo<React.CSSProperties>(() => {
@@ -214,7 +214,7 @@ export function MiniMap<T = Record<string, unknown>>({
     };
   }, [resolvedBg, resolvedBorder]);
 
-  // ── Track Container Scroll & Viewport ─────────────────────────────────────
+  //  Track Container Scroll & Viewport ─
   useEffect(() => {
     const container = containerRef?.current;
     if (!container) return;
@@ -295,7 +295,7 @@ export function MiniMap<T = Record<string, unknown>>({
     };
   }, [containerRef, scale, tx, ty]);
 
-  // ── Calculate Hierarchical Coordinates ────────────────────────────────────
+  //  Calculate Hierarchical Coordinates 
   const { layoutNodes, totalNodes } = useMemo(() => {
     const nodes: LayoutItem<T>[] = [];
     let leafCounter = 0;
@@ -382,7 +382,7 @@ export function MiniMap<T = Record<string, unknown>>({
     return { layoutNodes: nodes, totalNodes: nodes.length };
   }, [dataArr, orientation]);
 
-  // ── Render High-DPI Canvas ────────────────────────────────────────────────
+  //  Render High-DPI Canvas 
   useEffect(() => {
     if (minimized) return;
     const canvas = canvasRef.current;
@@ -400,7 +400,7 @@ export function MiniMap<T = Record<string, unknown>>({
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // ── 0. Viewport Indicator Lens ────────────────────────────────────────
+    //  0. Viewport Indicator Lens 
     if (viewportBox) {
       const vx = viewportBox.x * CANVAS_WIDTH;
       const vy = viewportBox.y * CANVAS_HEIGHT;
@@ -418,7 +418,7 @@ export function MiniMap<T = Record<string, unknown>>({
     const nodeMap = new Map<string, LayoutItem<T>>();
     layoutNodes.forEach((n) => nodeMap.set(n.id, n));
 
-    // ── 1. Draw Connector Lines ───────────────────────────────────────────
+    //  1. Draw Connector Lines 
     layoutNodes.forEach((parent) => {
       parent.childrenIds.forEach((childId) => {
         const child = nodeMap.get(childId);
@@ -456,7 +456,7 @@ export function MiniMap<T = Record<string, unknown>>({
       });
     });
 
-    // ── 2. Draw Nodes ─────────────────────────────────────────────────────
+    //  2. Draw Nodes 
     layoutNodes.forEach((node) => {
       const isFocused = focusedNodeId === node.id;
       const isSelected = selectedIds?.has(node.id) ?? false;
@@ -529,7 +529,7 @@ export function MiniMap<T = Record<string, unknown>>({
     ctx.restore();
   }, [layoutNodes, focusedNodeId, highlightPathIds, selectedIds, orientation, minimized, viewportBox, palette]);
 
-  // ── Panning & Navigation ──────────────────────────────────────────────────
+  //  Panning & Navigation 
   const panToCanvasCoords = useCallback((mouseX: number, mouseY: number, smooth = true) => {
     const container = containerRef?.current;
     if (!container) return;
@@ -550,7 +550,7 @@ export function MiniMap<T = Record<string, unknown>>({
     });
   }, [containerRef, scale, translate, onNavigate]);
 
-  // ── Hover & Click Interactions ────────────────────────────────────────────
+  //  Hover & Click Interactions 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       const canvas = canvasRef.current;

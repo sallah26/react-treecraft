@@ -1,6 +1,6 @@
-// ─────────────────────────────────────────────────────────────
+// 
 //  react-treecraft — TreeExport Companion Component
-// ─────────────────────────────────────────────────────────────
+// 
 import React, { useState, useRef, useEffect } from 'react';
 import type {
   TreeExportProps,
@@ -159,7 +159,7 @@ export function TreeExport<T = Record<string, unknown>>({
           viewBox="0 0 10 10"
           fill="none"
         >
-          <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
 

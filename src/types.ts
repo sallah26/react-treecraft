@@ -331,10 +331,11 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
   /**
    * Enable drag-and-drop node reordering and reparenting.
    * @default false
+   * @deprecated Use `draggable` instead. Will be removed in v1.0.
    */
   draggableNodes?: boolean;
   /**
-   * Alias for draggableNodes.
+   * Enable drag-and-drop node reordering and reparenting.
    * @default false
    */
   draggable?: boolean;

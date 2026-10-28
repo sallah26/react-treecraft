@@ -1,7 +1,7 @@
-// ─────────────────────────────────────────────────────────────
+// 
 //  react-treecraft — useTreeCraft Hook
 //  The built-in state manager. Zero boilerplate for consumers.
-// ─────────────────────────────────────────────────────────────
+// 
 import { useState, useCallback } from 'react';
 import {
   exportToJson,
@@ -38,7 +38,7 @@ export function useTreeCraft<T = Record<string, unknown>>(
   const nodes = useCallback(() => toArray(data), [data]);
   const isForest = Array.isArray(data);
 
-  // ── Tree Mutations ──────────────────────────────────────────────────────
+  //  Tree Mutations 
 
   const addChild = useCallback(
     (parentId: string, nodeData: T, id?: string) => {
@@ -88,7 +88,7 @@ export function useTreeCraft<T = Record<string, unknown>>(
     [isForest],
   );
 
-  // ── Collapse Controls ───────────────────────────────────────────────────
+  //  Collapse Controls ─
 
   const collapse = useCallback((id: string) => {
     setCollapsedIds((prev) => new Set(prev).add(id));
@@ -114,7 +114,7 @@ export function useTreeCraft<T = Record<string, unknown>>(
     setCollapsedIds(new Set());
   }, []);
 
-  // ── Selection Controls ──────────────────────────────────────────────────
+  //  Selection Controls 
 
   const select = useCallback((id: string) => {
     setSelectedIds((prev) => new Set(prev).add(id));
@@ -134,7 +134,7 @@ export function useTreeCraft<T = Record<string, unknown>>(
 
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
-  // ── Queries ─────────────────────────────────────────────────────────────
+  //  Queries 
 
   const find = useCallback(
     (id: string): TreeNode<T> | null => findNode(nodes(), id),
@@ -151,7 +151,7 @@ export function useTreeCraft<T = Record<string, unknown>>(
     [nodes],
   );
 
-  // ── Export / Import Utilities ───────────────────────────────────────────
+  //  Export / Import Utilities 
 
   const exportJson = useCallback(
     (options?: JsonExportOptions) => exportToJson(data, options),

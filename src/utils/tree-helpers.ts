@@ -1,6 +1,6 @@
-// ─────────────────────────────────────────────────────────────
+// 
 //  react-treecraft — Pure Tree Utility Functions
-// ─────────────────────────────────────────────────────────────
+// 
 import type { TreeNode, InternalNode } from '../types';
 
 /** Generate a collision-resistant id */
