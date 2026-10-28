@@ -55,6 +55,8 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     theme,
     className = '',
     style,
+    ariaLabel,
+    ariaLabelledBy,
     // features
     readOnly = false,
     selectable = false,
@@ -543,7 +545,12 @@ function TreeCraftInternal<T = Record<string, unknown>>(
         onMouseLeave={zoomable ? handleMouseUp : undefined}
       >
         <div ref={canvasRef} className="tc-canvas" style={innerStyle}>
-          <div className={annotatedNodes.length > 1 ? 'tc-forest' : 'tc-tree-wrapper'}>
+          <div
+            className={annotatedNodes.length > 1 ? 'tc-forest' : 'tc-tree-wrapper'}
+            role="tree"
+            aria-label={ariaLabel ?? (annotatedNodes.length > 1 ? 'Hierarchical forest' : 'Hierarchical tree')}
+            aria-labelledby={ariaLabelledBy}
+          >
             {annotatedNodes.map((node) => (
               <TreeBranch
                 key={node.id}

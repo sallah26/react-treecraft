@@ -1,7 +1,7 @@
 // 
 //  TreeBranch — renders one node + its subtree recursively
 // 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback, useMemo } from 'react';
 import type {
   InternalNode,
   TreeCraftProps,
@@ -229,8 +229,24 @@ export function TreeBranch<T>({
     )
   ) : null;
 
+  const getNodeProps = useCallback((userProps: React.HTMLAttributes<HTMLElement> & Record<string, any> = {}): React.HTMLAttributes<HTMLElement> & Record<string, any> => {
+    return {
+      role: 'treeitem',
+      'aria-level': node._depth + 1,
+      'aria-expanded': hasChildren ? !isCollapsed : undefined,
+      'aria-selected': isClickSelectable ? isSelected : undefined,
+      'aria-disabled': readOnly ? true : undefined,
+      'data-tc-node-id': node.id,
+      ...userProps,
+    };
+  }, [node._depth, node.id, hasChildren, isCollapsed, isClickSelectable, isSelected, readOnly]);
+
+  const nodeWithProps = useMemo(() => {
+    return Object.assign({}, node, { getNodeProps });
+  }, [node, getNodeProps]);
+
   const renderedNodeContent = renderNode({
-    node: node as any,
+    node: nodeWithProps as any,
     depth: node._depth,
     isRoot: node._isRoot,
     isLeaf: node._isLeaf,
@@ -241,12 +257,18 @@ export function TreeBranch<T>({
     isOnHighlightedPath: isOnPath,
     isOnPath,
     toggleCollapse: () => onToggleCollapse(node.id),
+    getNodeProps,
   });
 
   const nodeCardEl = (
     <div
       className={nodeWrapperClasses}
       data-tc-node-id={node.id}
+      role="treeitem"
+      aria-level={node._depth + 1}
+      aria-expanded={hasChildren ? !isCollapsed : undefined}
+      aria-selected={isClickSelectable ? isSelected : undefined}
+      aria-disabled={readOnly ? true : undefined}
       draggable={draggableNodes && !readOnly}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
@@ -292,7 +314,7 @@ export function TreeBranch<T>({
               lineWidth={lineWidth}
               highlightColor={highlightColor}
             />
-            <div className="tc-children-row tc-children-row--horizontal" ref={childrenRowRef}>
+            <div className="tc-children-row tc-children-row--horizontal" ref={childrenRowRef} role="group">
               {children.map((child, idx) => (
                 <TreeBranch
                   key={child.id}
@@ -358,7 +380,7 @@ export function TreeBranch<T>({
             lineWidth={lineWidth}
             highlightColor={highlightColor}
           />
-          <div className="tc-children-row tc-children-row--vertical" ref={childrenRowRef}>
+          <div className="tc-children-row tc-children-row--vertical" ref={childrenRowRef} role="group">
             {children.map((child, idx) => (
               <TreeBranch
                 key={child.id}
