@@ -1,6 +1,6 @@
 //  react-treecraft — Core TypeScript Types
 
-import type { CSSProperties, ReactNode, MouseEvent as ReactMouseEvent, RefObject } from 'react';
+import type { CSSProperties, ReactNode, MouseEvent as ReactMouseEvent, RefObject, HTMLAttributes } from 'react';
 
 //  1. Data Model 
 
@@ -45,6 +45,11 @@ export interface RenderNodeProps<T = Record<string, unknown>> {
   isOnPath?: boolean;
   /** Programmatically toggle collapsed state of this node */
   toggleCollapse: () => void;
+  /**
+   * Helper emitting standard WAI-ARIA and data attributes for accessible treeitems.
+   * Merges custom user props with role="treeitem", aria-level, aria-expanded, aria-selected, etc.
+   */
+  getNodeProps?: (userProps?: HTMLAttributes<HTMLElement> & Record<string, unknown>) => HTMLAttributes<HTMLElement> & Record<string, unknown>;
 }
 
 export interface RenderCollapseBtnProps<T = Record<string, unknown>> {
@@ -322,6 +327,17 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
   //  Style & Class 
   className?: string;
   style?: CSSProperties;
+
+  //  Accessibility (WAI-ARIA) 
+  /**
+   * Accessible name for the tree container (emitted on role="tree").
+   * @default "Hierarchical tree"
+   */
+  ariaLabel?: string;
+  /**
+   * ID of an element that labels the tree container (emitted as aria-labelledby on role="tree").
+   */
+  ariaLabelledBy?: string;
 
   //  Node wrapper class (applied to every node container) 
   nodeClassName?: string;
