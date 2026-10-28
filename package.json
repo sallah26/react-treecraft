@@ -1,6 +1,6 @@
 {
   "name": "react-treecraft",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A headless, minimal, and highly customizable tree structure builder for React. Zero assumptions. Full control.",
   "author": "Selahadin Hamid",
   "license": "MIT",
