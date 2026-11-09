@@ -5,6 +5,7 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import type { TreeNode, MiniMapPosition, MiniMapProps } from '../types';
 import { toArray } from '../utils/tree-helpers';
 import { normalizeColorString, parseColorToRgba, colorWithAlpha, isLightBackground } from '../utils/color-helpers';
+import { queryNode } from '../utils/dom';
 
 //  Re-export so consumers can import MiniMapProps from the component file too 
 export type { MiniMapProps };
@@ -606,12 +607,9 @@ export function MiniMap<T = Record<string, unknown>>({
 
     if (hitNode) {
       onNodeClick?.(hitNode.node);
-      const container = containerRef?.current;
-      if (container) {
-        const el = container.querySelector(`[data-tc-node-id="${hitNode.id}"]`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-        }
+      const el = queryNode(containerRef?.current, hitNode.id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
       }
     } else {
       isDraggingRadar.current = true;

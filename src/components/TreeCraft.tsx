@@ -27,6 +27,7 @@ import {
   downloadJson,
 } from '../utils/export';
 import '../styles/index.css';
+import { queryNode } from '../utils/dom';
 
 function TreeCraftInternal<T = Record<string, unknown>>(
   {
@@ -371,7 +372,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
       const viewport = viewportRef.current;
       const canvas = canvasRef.current;
       if (!viewport) return;
-      const el = viewport.querySelector(`[data-tc-node-id="${nodeId}"]`) as HTMLElement | null;
+      const el = queryNode(viewport, nodeId);
       if (!el) return;
 
       if (zoomable && canvas) {
