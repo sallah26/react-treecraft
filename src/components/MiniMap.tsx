@@ -607,15 +607,22 @@ export function MiniMap<T = Record<string, unknown>>({
 
     if (hitNode) {
       onNodeClick?.(hitNode.node);
-      const el = queryNode(containerRef?.current, hitNode.id);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      // In zoom/pan mode the viewport is overflow:hidden and positioned by a CSS transform;
+      // scrollIntoView would scroll it out of sync with that transform. Navigation is then
+      // the responsibility of the onNodeClick owner (TreeCraft does this via scrollToNode).
+      const isTransformMode = scale !== undefined && translate !== undefined && !!onNavigate;
+      if (!isTransformMode) {
+        queryNode(containerRef?.current, hitNode.id)?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'center',
+        });
       }
     } else {
       isDraggingRadar.current = true;
       panToCanvasCoords(mouseX, mouseY, true);
     }
-  }, [layoutNodes, onNodeClick, containerRef, panToCanvasCoords]);
+  }, [layoutNodes, onNodeClick, containerRef, panToCanvasCoords, scale, translate, onNavigate]);
 
   const handleMouseUp = useCallback(() => {
     isDraggingRadar.current = false;

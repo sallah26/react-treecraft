@@ -612,27 +612,8 @@ function TreeCraftInternal<T = Record<string, unknown>>(
           nodeColor={miniMapNodeColor ?? theme?.miniMapNodeColor}
           onNodeClick={(node) => {
             onNodeClick?.(node);
-            const el = viewportRef.current?.querySelector(`[data-tc-node-id="${node.id}"]`) as HTMLElement | null;
-            if (el) {
-              if (zoomable) {
-                const canvas = canvasRef.current;
-                const viewport = viewportRef.current;
-                if (canvas && viewport) {
-                  const nodeRect = el.getBoundingClientRect();
-                  const vRect = viewport.getBoundingClientRect();
-                  const deltaX = (vRect.left + vRect.width / 2) - (nodeRect.left + nodeRect.width / 2);
-                  const deltaY = (vRect.top + vRect.height / 2) - (nodeRect.top + nodeRect.height / 2);
-                  const nextX = transformRef.current.x + deltaX;
-                  const nextY = transformRef.current.y + deltaY;
-                  transformRef.current.x = nextX;
-                  transformRef.current.y = nextY;
-                  canvas.style.transform = `translate(${nextX}px, ${nextY}px) scale(${transformRef.current.scale})`;
-                  setTransform((prev) => ({ ...prev, x: nextX, y: nextY }));
-                }
-              } else {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-              }
-            }
+            // TreeCraft owns navigation: transform in zoom mode, scroll otherwise.
+            scrollToNode(node.id);
           }}
         />
       )}
