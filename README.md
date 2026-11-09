@@ -28,7 +28,7 @@ yarn add react-treecraft
 pnpm add react-treecraft
 ```
 
-Import the base styles once in your entry point:
+Import the base styles once in your entry point (required since v0.3.0 — the JS no longer imports CSS for you):
 
 ```ts
 import 'react-treecraft/styles';

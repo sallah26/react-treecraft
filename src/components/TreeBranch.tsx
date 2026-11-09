@@ -35,7 +35,8 @@ interface TreeBranchProps<T> {
   onSelect?: TreeCraftProps<T>['onSelect'];
   onNodeClick?: TreeCraftProps<T>['onNodeClick'];
   onToggleCollapse: (id: string) => void;
-  onToggleSelect: (id: string, path: string[]) => void;
+  /** additive = modifier-click (Shift / Cmd / Ctrl); TreeCraft decides if multi-select applies */
+  onToggleSelect: (id: string, path: string[], additive: boolean) => void;
   // Connector styling
   connectorType?: ConnectorType;
   connectorPattern?: ConnectorPattern;
@@ -198,10 +199,10 @@ export function TreeBranch<T>({
 
   const isClickSelectable = (selectable || selectPath) && !readOnly;
 
-  const handleNodeClick = () => {
+  const handleNodeClick = (e: React.MouseEvent) => {
     if (readOnly) return;
     if (selectable || selectPath) {
-      onToggleSelect(node.id, node._path);
+      onToggleSelect(node.id, node._path, e.shiftKey || e.metaKey || e.ctrlKey);
     }
     onNodeClick?.(node as any);
   };

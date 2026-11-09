@@ -5,6 +5,8 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import type { TreeNode, MiniMapPosition, MiniMapProps } from '../types';
 import { toArray } from '../utils/tree-helpers';
 import { normalizeColorString, parseColorToRgba, colorWithAlpha, isLightBackground } from '../utils/color-helpers';
+import { queryNode } from '../utils/dom';
+import { useThemeVersion } from '../hooks/useThemeVersion';
 
 //  Re-export so consumers can import MiniMapProps from the component file too 
 export type { MiniMapProps };
@@ -111,26 +113,31 @@ export function MiniMap<T = Record<string, unknown>>({
   const ty = translate?.y;
 
   //  Resolve dynamic theme colors 
-  // These are computed once per render but can react to CSS variable changes
-  // because they derive from the live DOM via getComputedStyle.
+  const themeVersion = useThemeVersion();
+  // CSS variables are read from the live DOM; themeVersion changes whenever the page
+  // theme toggles (class / data-theme on <html>, or OS color scheme), forcing a re-read.
   const resolvedBg = useMemo(
     () => resolveColor(backgroundColorProp, ['--background', '--color-background'], DARK_BG_FALLBACK),
-    [backgroundColorProp],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [backgroundColorProp, themeVersion],
   );
 
   const resolvedBorder = useMemo(
     () => resolveColor(borderColorProp, ['--border', '--color-border'], DARK_BORDER_FALLBACK),
-    [borderColorProp],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [borderColorProp, themeVersion],
   );
 
   const resolvedPrimary = useMemo(
     () => resolveColor(primaryColorProp, ['--primary', '--color-primary', '--tc-focus-color'], DARK_PRIMARY_FALLBACK),
-    [primaryColorProp],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [primaryColorProp, themeVersion],
   );
 
   const resolvedNode = useMemo(
     () => resolveColor(nodeColorProp, ['--tc-line-color', '--muted-foreground'], DARK_NODE_FALLBACK),
-    [nodeColorProp],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [nodeColorProp, themeVersion],
   );
 
   // Determine if the resolved background is light so we can adapt text/icon colors
@@ -606,18 +613,22 @@ export function MiniMap<T = Record<string, unknown>>({
 
     if (hitNode) {
       onNodeClick?.(hitNode.node);
-      const container = containerRef?.current;
-      if (container) {
-        const el = container.querySelector(`[data-tc-node-id="${hitNode.id}"]`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-        }
+      // In zoom/pan mode the viewport is overflow:hidden and positioned by a CSS transform;
+      // scrollIntoView would scroll it out of sync with that transform. Navigation is then
+      // the responsibility of the onNodeClick owner (TreeCraft does this via scrollToNode).
+      const isTransformMode = scale !== undefined && translate !== undefined && !!onNavigate;
+      if (!isTransformMode) {
+        queryNode(containerRef?.current, hitNode.id)?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'center',
+        });
       }
     } else {
       isDraggingRadar.current = true;
       panToCanvasCoords(mouseX, mouseY, true);
     }
-  }, [layoutNodes, onNodeClick, containerRef, panToCanvasCoords]);
+  }, [layoutNodes, onNodeClick, containerRef, panToCanvasCoords, scale, translate, onNavigate]);
 
   const handleMouseUp = useCallback(() => {
     isDraggingRadar.current = false;

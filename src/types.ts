@@ -78,7 +78,7 @@ export interface TreeCraftTheme {
   highlightColor?: string;
   /** Gap between sibling nodes (horizontal). Default: 24 */
   nodeGap?: number;
-  /** Gap between parent and child row (vertical). Default: 32 */
+  /** Gap between parent and child row (vertical). Default: 36 */
   levelGap?: number;
   /** Animation duration in ms. Default: 200 */
   animationDuration?: number;
@@ -171,8 +171,8 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
    */
   collapsible?: boolean;
   /**
-   * All nodes start collapsed.
-   * @default true
+   * All nodes start collapsed (applied on mount).
+   * @default false
    */
   defaultCollapsed?: boolean;
   /**
@@ -285,7 +285,9 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
    */
   selectPath?: boolean;
   /**
-   * Allow selecting multiple nodes with Shift+Click.
+   * Allow selecting multiple nodes with Shift / Cmd / Ctrl + Click.
+   * Without it (or without a modifier key), a click selects only that node.
+   * Has no effect when `selectPath` is enabled.
    * @default false
    */
   multiSelect?: boolean;

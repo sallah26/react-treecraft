@@ -26,7 +26,9 @@ import {
   exportToJson,
   downloadJson,
 } from '../utils/export';
-import '../styles/index.css';
+import { queryNode } from '../utils/dom';
+// Styles are NOT imported here: consumers import 'react-treecraft/styles' once.
+// Importing CSS from JS made the CJS build `require()` a .css file, which crashes SSR / Jest.
 
 function TreeCraftInternal<T = Record<string, unknown>>(
   {
@@ -61,6 +63,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     readOnly = false,
     selectable = false,
     selectPath = false,
+    multiSelect = false,
     selectedIds: propSelectedIds,
     onSelect,
     onNodeClick,
@@ -179,7 +182,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     }
   }, [isControlledCollapse]);
 
-  const toggleSelect = useCallback((id: string, path: string[]) => {
+  const toggleSelect = useCallback((id: string, path: string[], additive: boolean) => {
     const isSelected = activeSelectedIds.has(id);
     const next = new Set(activeSelectedIds);
     if (selectPath) {
@@ -195,8 +198,8 @@ function TreeCraftInternal<T = Record<string, unknown>>(
         setInternalHighlightPath(id);
         setInternalFocusedId(id);
       }
-    } else {
-      // Individual node toggle
+    } else if (multiSelect && additive) {
+      // Shift / Cmd / Ctrl + click: add or remove this node, keep the rest
       if (isSelected) {
         next.delete(id);
         if (activeFocusedId === id) setInternalFocusedId(undefined);
@@ -204,12 +207,21 @@ function TreeCraftInternal<T = Record<string, unknown>>(
         next.add(id);
         setInternalFocusedId(id);
       }
+    } else if (isSelected && activeSelectedIds.size === 1) {
+      // Plain click on the only selected node: deselect it
+      next.clear();
+      if (activeFocusedId === id) setInternalFocusedId(undefined);
+    } else {
+      // Plain click: select only this node
+      next.clear();
+      next.add(id);
+      setInternalFocusedId(id);
     }
     if (!isControlledSelect) {
       setInternalSelectedIds(next);
     }
     onSelect?.([...next]);
-  }, [activeSelectedIds, selectPath, isControlledSelect, onSelect, activeFocusedId]);
+  }, [activeSelectedIds, selectPath, multiSelect, isControlledSelect, onSelect, activeFocusedId]);
 
   //  Highlighted path 
   const highlightPathIds = useMemo<Set<string> | undefined>(() => {
@@ -371,7 +383,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
       const viewport = viewportRef.current;
       const canvas = canvasRef.current;
       if (!viewport) return;
-      const el = viewport.querySelector(`[data-tc-node-id="${nodeId}"]`) as HTMLElement | null;
+      const el = queryNode(viewport, nodeId);
       if (!el) return;
 
       if (zoomable && canvas) {
@@ -550,6 +562,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
             role="tree"
             aria-label={ariaLabel ?? (annotatedNodes.length > 1 ? 'Hierarchical forest' : 'Hierarchical tree')}
             aria-labelledby={ariaLabelledBy}
+            aria-multiselectable={selectable && multiSelect && !selectPath ? true : undefined}
           >
             {annotatedNodes.map((node) => (
               <TreeBranch
@@ -611,27 +624,8 @@ function TreeCraftInternal<T = Record<string, unknown>>(
           nodeColor={miniMapNodeColor ?? theme?.miniMapNodeColor}
           onNodeClick={(node) => {
             onNodeClick?.(node);
-            const el = viewportRef.current?.querySelector(`[data-tc-node-id="${node.id}"]`) as HTMLElement | null;
-            if (el) {
-              if (zoomable) {
-                const canvas = canvasRef.current;
-                const viewport = viewportRef.current;
-                if (canvas && viewport) {
-                  const nodeRect = el.getBoundingClientRect();
-                  const vRect = viewport.getBoundingClientRect();
-                  const deltaX = (vRect.left + vRect.width / 2) - (nodeRect.left + nodeRect.width / 2);
-                  const deltaY = (vRect.top + vRect.height / 2) - (nodeRect.top + nodeRect.height / 2);
-                  const nextX = transformRef.current.x + deltaX;
-                  const nextY = transformRef.current.y + deltaY;
-                  transformRef.current.x = nextX;
-                  transformRef.current.y = nextY;
-                  canvas.style.transform = `translate(${nextX}px, ${nextY}px) scale(${transformRef.current.scale})`;
-                  setTransform((prev) => ({ ...prev, x: nextX, y: nextY }));
-                }
-              } else {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-              }
-            }
+            // TreeCraft owns navigation: transform in zoom mode, scroll otherwise.
+            scrollToNode(node.id);
           }}
         />
       )}
