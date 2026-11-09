@@ -78,7 +78,7 @@ export interface TreeCraftTheme {
   highlightColor?: string;
   /** Gap between sibling nodes (horizontal). Default: 24 */
   nodeGap?: number;
-  /** Gap between parent and child row (vertical). Default: 32 */
+  /** Gap between parent and child row (vertical). Default: 36 */
   levelGap?: number;
   /** Animation duration in ms. Default: 200 */
   animationDuration?: number;
@@ -171,8 +171,8 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
    */
   collapsible?: boolean;
   /**
-   * All nodes start collapsed.
-   * @default true
+   * All nodes start collapsed (applied on mount).
+   * @default false
    */
   defaultCollapsed?: boolean;
   /**
