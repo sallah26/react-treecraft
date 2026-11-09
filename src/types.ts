@@ -285,7 +285,9 @@ export interface TreeCraftProps<T = Record<string, unknown>> {
    */
   selectPath?: boolean;
   /**
-   * Allow selecting multiple nodes with Shift+Click.
+   * Allow selecting multiple nodes with Shift / Cmd / Ctrl + Click.
+   * Without it (or without a modifier key), a click selects only that node.
+   * Has no effect when `selectPath` is enabled.
    * @default false
    */
   multiSelect?: boolean;

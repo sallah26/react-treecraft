@@ -62,6 +62,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     readOnly = false,
     selectable = false,
     selectPath = false,
+    multiSelect = false,
     selectedIds: propSelectedIds,
     onSelect,
     onNodeClick,
@@ -180,7 +181,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     }
   }, [isControlledCollapse]);
 
-  const toggleSelect = useCallback((id: string, path: string[]) => {
+  const toggleSelect = useCallback((id: string, path: string[], additive: boolean) => {
     const isSelected = activeSelectedIds.has(id);
     const next = new Set(activeSelectedIds);
     if (selectPath) {
@@ -196,8 +197,8 @@ function TreeCraftInternal<T = Record<string, unknown>>(
         setInternalHighlightPath(id);
         setInternalFocusedId(id);
       }
-    } else {
-      // Individual node toggle
+    } else if (multiSelect && additive) {
+      // Shift / Cmd / Ctrl + click: add or remove this node, keep the rest
       if (isSelected) {
         next.delete(id);
         if (activeFocusedId === id) setInternalFocusedId(undefined);
@@ -205,12 +206,21 @@ function TreeCraftInternal<T = Record<string, unknown>>(
         next.add(id);
         setInternalFocusedId(id);
       }
+    } else if (isSelected && activeSelectedIds.size === 1) {
+      // Plain click on the only selected node: deselect it
+      next.clear();
+      if (activeFocusedId === id) setInternalFocusedId(undefined);
+    } else {
+      // Plain click: select only this node
+      next.clear();
+      next.add(id);
+      setInternalFocusedId(id);
     }
     if (!isControlledSelect) {
       setInternalSelectedIds(next);
     }
     onSelect?.([...next]);
-  }, [activeSelectedIds, selectPath, isControlledSelect, onSelect, activeFocusedId]);
+  }, [activeSelectedIds, selectPath, multiSelect, isControlledSelect, onSelect, activeFocusedId]);
 
   //  Highlighted path 
   const highlightPathIds = useMemo<Set<string> | undefined>(() => {
@@ -551,6 +561,7 @@ function TreeCraftInternal<T = Record<string, unknown>>(
             role="tree"
             aria-label={ariaLabel ?? (annotatedNodes.length > 1 ? 'Hierarchical forest' : 'Hierarchical tree')}
             aria-labelledby={ariaLabelledBy}
+            aria-multiselectable={selectable && multiSelect && !selectPath ? true : undefined}
           >
             {annotatedNodes.map((node) => (
               <TreeBranch
