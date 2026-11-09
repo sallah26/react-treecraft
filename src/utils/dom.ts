@@ -1,6 +1,8 @@
 //
 //  react-treecraft — DOM helpers
 //
+import { useEffect, useLayoutEffect } from 'react';
+
 /**
  * Escape a string for safe use inside a CSS attribute selector value.
  * Uses the native CSS.escape when available, with a fallback for SSR / older test DOMs.
@@ -24,3 +26,9 @@ export function queryNode(root: ParentNode | null | undefined, nodeId: string): 
   return root.querySelector(nodeSelector(nodeId)) as HTMLElement | null;
 }
 
+/**
+ * useLayoutEffect in the browser, useEffect on the server.
+ * Avoids React's "useLayoutEffect does nothing on the server" warning during SSR.
+ */
+export const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' && typeof document !== 'undefined' ? useLayoutEffect : useEffect;

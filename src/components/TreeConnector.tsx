@@ -4,8 +4,9 @@
 //  Straight diagonal lines, customizable stroke patterns,
 //  colors, thickness, and animated flow pulses.
 // 
-import React, { useState, useLayoutEffect, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import type { InternalNode, ConnectorType, ConnectorPattern } from '../types';
+import { useIsomorphicLayoutEffect } from '../utils/dom';
 
 interface TreeConnectorProps<T> {
   orientation: 'vertical' | 'horizontal';
@@ -171,7 +172,7 @@ export function TreeConnector<T>({
     }
   }, [orientation, getRow]);
 
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     measure();
     const container = containerRef.current;
     const row = getRow();
