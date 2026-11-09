@@ -26,8 +26,9 @@ import {
   exportToJson,
   downloadJson,
 } from '../utils/export';
-import '../styles/index.css';
 import { queryNode } from '../utils/dom';
+// Styles are NOT imported here: consumers import 'react-treecraft/styles' once.
+// Importing CSS from JS made the CJS build `require()` a .css file, which crashes SSR / Jest.
 
 function TreeCraftInternal<T = Record<string, unknown>>(
   {

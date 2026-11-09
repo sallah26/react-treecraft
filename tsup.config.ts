@@ -11,8 +11,7 @@ export default defineConfig({
   treeshake: true,
   external: ['react', 'react-dom'],
   injectStyle: false,
-  loader: {
-    '.css': 'copy',
-  },
+  // CSS is intentionally not imported from JS (a require('./x.css') in the CJS build breaks
+  // SSR and Jest). The stylesheet ships as a single file: import 'react-treecraft/styles'.
   onSuccess: 'cp src/styles/index.css dist/index.css && echo ✅ react-treecraft built successfully!',
 });
