@@ -1,9 +1,9 @@
 // 
 //  TreeSearch — optional built-in search component
 // 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { TreeNode } from '../types';
-import { flattenTree } from '../utils/tree-helpers';
+import { flattenTree, toArray } from '../utils/tree-helpers';
 
 export interface TreeSearchProps<T = Record<string, unknown>> {
   /** Pass the same `data` you gave to <TreeCraft> */
@@ -65,57 +65,45 @@ export function TreeSearch<T = Record<string, unknown>>({
   disabled = false,
 }: TreeSearchProps<T>) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<Array<{ id: string; label: string; subtitle?: string }>>([]);
-  const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
+  const [isOpen, setIsOpen] = useState(false);
+  const [rawActiveIndex, setActiveIndex] = useState(-1);
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const dataArr = Array.isArray(data) ? data : [data];
-
-  const search = useCallback(
-    (q: string) => {
-      if (!q.trim()) {
-        setResults([]);
-        setOpen(false);
-        setActiveIndex(-1);
-        return;
+  // Results are derived state. (Previously an effect stored them with setState and depended on
+  // a `[data]` array rebuilt every render, which re-rendered forever for single-root data.)
+  const results = useMemo<Array<{ id: string; label: string; subtitle?: string }>>(() => {
+    const lower = query.trim().toLowerCase();
+    if (!lower) return [];
+    const flat = flattenTree(toArray(data));
+    const matches: Array<{ id: string; label: string; subtitle?: string }> = [];
+    for (const n of flat) {
+      if (matches.length >= maxResults) break;
+      const label = getLabel ? getLabel(n) : n.id;
+      const subtitle = getSubtitle ? getSubtitle(n) : undefined;
+      if (label.toLowerCase().includes(lower) || (subtitle && subtitle.toLowerCase().includes(lower))) {
+        matches.push({ id: n.id, label, subtitle });
       }
-      const flat = flattenTree(dataArr as TreeNode<T>[]);
-      const lower = q.toLowerCase();
-      const matches = flat
-        .filter((n) => {
-          const label = getLabel ? getLabel(n) : n.id;
-          const sub = getSubtitle ? getSubtitle(n) : undefined;
-          return (
-            label.toLowerCase().includes(lower) ||
-            (sub && sub.toLowerCase().includes(lower))
-          );
-        })
-        .slice(0, maxResults)
-        .map((n) => ({
-          id: n.id,
-          label: getLabel ? getLabel(n) : n.id,
-          subtitle: getSubtitle ? getSubtitle(n) : undefined,
-        }));
+    }
+    return matches;
+  }, [query, data, getLabel, getSubtitle, maxResults]);
 
-      setResults(matches);
-      setOpen(matches.length > 0);
-      setActiveIndex(matches.length > 0 ? 0 : -1);
-    },
-    [dataArr, getLabel, getSubtitle, maxResults],
-  );
+  const open = isOpen && results.length > 0;
+  // Keep the active row valid when the result list shrinks (e.g. data changed while typing)
+  const activeIndex = results.length === 0 ? -1 : Math.min(Math.max(rawActiveIndex, 0), results.length - 1);
 
-  useEffect(() => {
-    search(query);
-  }, [query, search]);
+  const updateQuery = (q: string) => {
+    setQuery(q);
+    setIsOpen(q.trim().length > 0);
+    setActiveIndex(0);
+  };
 
   // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
+        setIsOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);
@@ -124,36 +112,32 @@ export function TreeSearch<T = Record<string, unknown>>({
 
   const pick = (id: string) => {
     onResult(id);
-    if (clearOnSelect) {
-      setQuery('');
-      setResults([]);
-    }
-    setOpen(false);
+    if (clearOnSelect) setQuery('');
+    setIsOpen(false);
     setActiveIndex(-1);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!open || results.length === 0) {
+    if (!open) {
       if (e.key === 'ArrowDown' && results.length > 0) {
-        setOpen(true);
+        e.preventDefault();
+        setIsOpen(true);
       }
       return;
     }
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActiveIndex((prev) => (prev < results.length - 1 ? prev + 1 : 0));
+      setActiveIndex(activeIndex < results.length - 1 ? activeIndex + 1 : 0);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setActiveIndex((prev) => (prev > 0 ? prev - 1 : results.length - 1));
+      setActiveIndex(activeIndex > 0 ? activeIndex - 1 : results.length - 1);
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      const target = activeIndex >= 0 && activeIndex < results.length ? results[activeIndex] : results[0];
-      if (target) {
-        pick(target.id);
-      }
+      const target = results[activeIndex] ?? results[0];
+      if (target) pick(target.id);
     } else if (e.key === 'Escape') {
-      setOpen(false);
+      setIsOpen(false);
       inputRef.current?.blur();
     }
   };
@@ -202,12 +186,12 @@ export function TreeSearch<T = Record<string, unknown>>({
           type="text"
           className={`tc-search__input ${inputClassName}`}
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => updateQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           onFocus={() => {
             setIsFocused(true);
-            if (results.length > 0) setOpen(true);
+            if (results.length > 0) setIsOpen(true);
           }}
           onBlur={() => setIsFocused(false)}
           aria-label="Search tree nodes"
@@ -222,9 +206,7 @@ export function TreeSearch<T = Record<string, unknown>>({
             type="button"
             className="tc-search__clear"
             onClick={() => {
-              setQuery('');
-              setResults([]);
-              setOpen(false);
+              updateQuery('');
               inputRef.current?.focus();
             }}
             aria-label="Clear search query"
