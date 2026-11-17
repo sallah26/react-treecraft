@@ -1,7 +1,7 @@
 // 
 //  TreeBranch — renders one node + its subtree recursively
 // 
-import React, { useRef, useState, useCallback, useMemo } from 'react';
+import React, { memo, useRef, useState, useCallback, useMemo } from 'react';
 import type {
   InternalNode,
   TreeCraftProps,
@@ -54,7 +54,7 @@ interface TreeBranchProps<T> {
   canDrop?: CanDropFn;
 }
 
-export function TreeBranch<T>({
+function TreeBranchInner<T>({
   node,
   collapsedIds,
   selectedIds,
@@ -426,3 +426,11 @@ export function TreeBranch<T>({
     </div>
   );
 }
+
+/**
+ * Memoized: a branch only re-renders when its own props change. Zoom/pan, minimap updates and
+ * other TreeCraft-level renders then skip the whole tree instead of re-rendering every node.
+ * (All props TreeCraft passes are stable across those renders: memoized data and sets,
+ * useCallback handlers, primitives, and the consumer's own props.)
+ */
+export const TreeBranch = memo(TreeBranchInner) as typeof TreeBranchInner;
