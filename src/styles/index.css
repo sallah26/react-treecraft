@@ -59,6 +59,12 @@
   margin: 0 auto;
 }
 
+/* During zoom/pan gestures: nodes moving under a still cursor would otherwise flip :hover
+   states (and their transitions) every frame, which shows as jitter. Restored on settle. */
+.tc-root--interacting .tc-canvas {
+  pointer-events: none;
+}
+
 .tc-root--horizontal .tc-canvas {
   flex-direction: row;
   min-height: 100%;

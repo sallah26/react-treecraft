@@ -26,9 +26,23 @@ import {
   exportToJson,
   downloadJson,
 } from '../utils/export';
-import { queryNode } from '../utils/dom';
+import { queryNode, useIsomorphicLayoutEffect, TRANSFORM_EVENT } from '../utils/dom';
 // Styles are NOT imported here: consumers import 'react-treecraft/styles' once.
 // Importing CSS from JS made the CJS build `require()` a .css file, which crashes SSR / Jest.
+
+interface ViewTransform {
+  scale: number;
+  x: number;
+  y: number;
+}
+
+const IDENTITY_TRANSFORM: ViewTransform = { scale: 1, x: 0, y: 0 };
+const VIEW_TRANSITION_MS = 260;
+/** Idle time after the last wheel/pan event before a gesture counts as finished */
+const GESTURE_SETTLE_MS = 400;
+const VIEW_TRANSITION = `transform ${VIEW_TRANSITION_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`;
+
+const transformToCss = ({ scale, x, y }: ViewTransform) => `translate(${x}px, ${y}px) scale(${scale})`;
 
 function TreeCraftInternal<T = Record<string, unknown>>(
   {
@@ -231,32 +245,92 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     return chain ? new Set(chain.map((n) => n.id)) : undefined;
   }, [activeHighlightPath, data]);
 
-  //  Zoom / Pan 
-  const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
-  const transformRef = useRef({ scale: 1, x: 0, y: 0 });
+  //  Zoom / Pan
+  // The live transform lives in `transformRef` and is written straight to the canvas element.
+  // React state only mirrors it once a gesture settles (the MiniMap follows per frame through
+  // TRANSFORM_EVENT instead). React never writes the transform itself, so a re-render can't put
+  // back an older value mid-gesture (that was the source of the shaking), and wheel/pan events
+  // don't re-render anything.
+  const [transform, setTransform] = useState<ViewTransform>(IDENTITY_TRANSFORM);
+  const transformRef = useRef<ViewTransform>(IDENTITY_TRANSFORM);
   const isPanning = useRef(false);
   const panStart = useRef({ x: 0, y: 0 });
   const viewportRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const syncFrameRef = useRef(0);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /** Canvas layout origin (client coords, transform excluded), cached for one gesture */
+  const gestureOriginRef = useRef<{ left: number; top: number } | null>(null);
 
   const memoizedTranslate = useMemo(
     () => (zoomable ? { x: transform.x, y: transform.y } : undefined),
     [zoomable, transform.x, transform.y],
   );
 
-  // Keep transformRef in sync
-  useEffect(() => {
-    transformRef.current = transform;
-  }, [transform]);
+  /**
+   * Apply a transform now (ref + DOM). During a gesture this is all that happens per event:
+   * - the MiniMap is notified once per frame via a DOM event (no React render)
+   * - React state is mirrored only once the gesture settles
+   * - `tc-root--interacting` is set meanwhile (CSS pauses pointer events on the canvas, so
+   *   nodes sliding under the cursor don't flip hover states mid-zoom)
+   */
+  const applyTransform = useCallback((next: ViewTransform, animate = false) => {
+    transformRef.current = next;
+    const canvas = canvasRef.current;
+    const root = containerRef.current;
+    if (canvas) {
+      // A gesture interrupts any running programmatic animation immediately
+      canvas.style.transition = animate ? VIEW_TRANSITION : '';
+      canvas.style.transform = transformToCss(next);
+      // GPU layer for the whole gesture; dropped once settled so text re-rasterizes crisply
+      canvas.style.willChange = 'transform';
+    }
+    root?.classList.add('tc-root--interacting');
 
-  // Reset when zoomable changes
-  useEffect(() => {
-    if (!zoomable) {
-      transformRef.current = { scale: 1, x: 0, y: 0 };
-      setTransform({ scale: 1, x: 0, y: 0 });
-      if (canvasRef.current) {
-        canvasRef.current.style.transform = '';
+    if (!syncFrameRef.current) {
+      syncFrameRef.current = requestAnimationFrame(() => {
+        syncFrameRef.current = 0;
+        viewportRef.current?.dispatchEvent(new Event(TRANSFORM_EVENT));
+      });
+    }
+
+    clearTimeout(settleTimerRef.current);
+    settleTimerRef.current = setTimeout(() => {
+      if (canvas) {
+        canvas.style.willChange = '';
+        canvas.style.transition = '';
       }
+      root?.classList.remove('tc-root--interacting');
+      gestureOriginRef.current = null;
+      setTransform(transformRef.current);
+    }, animate ? VIEW_TRANSITION_MS + 40 : GESTURE_SETTLE_MS);
+  }, []);
+
+  // Cancel pending frame / timers on unmount
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(syncFrameRef.current);
+      clearTimeout(settleTimerRef.current);
+    },
+    [],
+  );
+
+  // Entering zoom mode applies the current transform; leaving it resets everything
+  useIsomorphicLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (zoomable) {
+      if (canvas) canvas.style.transform = transformToCss(transformRef.current);
+      return;
+    }
+    clearTimeout(settleTimerRef.current);
+    gestureOriginRef.current = null;
+    containerRef.current?.classList.remove('tc-root--interacting');
+    transformRef.current = IDENTITY_TRANSFORM;
+    setTransform(IDENTITY_TRANSFORM);
+    if (canvas) {
+      canvas.style.transform = '';
+      canvas.style.willChange = '';
+      canvas.style.transition = '';
     }
   }, [zoomable]);
 
@@ -270,33 +344,38 @@ function TreeCraftInternal<T = Record<string, unknown>>(
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      const currentScale = transformRef.current.scale;
-      const currentX = transformRef.current.x;
-      const currentY = transformRef.current.y;
-
-      const scaleMultiplier = Math.exp(-e.deltaY * 0.0015);
-      const nextScale = Math.min(4, Math.max(0.15, currentScale * scaleMultiplier));
+      const { scale: currentScale, x: currentX, y: currentY } = transformRef.current;
+      // Normalize line/page wheel units (Firefox) to pixels and cap huge single jumps
+      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
+      const deltaY = Math.max(-300, Math.min(300, e.deltaY * unit));
+      const nextScale = Math.min(4, Math.max(0.15, currentScale * Math.exp(-deltaY * 0.0015)));
       if (nextScale === currentScale) return;
       const ratio = nextScale / currentScale;
 
-      // Cursor position relative to the currently rendered canvas bounds
-      const canvasRect = canvas.getBoundingClientRect();
-      const cursorCanvasX = e.clientX - canvasRect.left;
-      const cursorCanvasY = e.clientY - canvasRect.top;
+      // Measure the canvas origin once per gesture, not on every wheel event (each read right
+      // after a transform write forced a synchronous style/layout pass mid-frame)
+      if (!gestureOriginRef.current) {
+        canvas.style.transition = ''; // jump any running animation to its end before measuring
+        const rect = canvas.getBoundingClientRect();
+        gestureOriginRef.current = { left: rect.left - currentX, top: rect.top - currentY };
+      }
 
-      const nextX = currentX + cursorCanvasX * (1 - ratio);
-      const nextY = currentY + cursorCanvasY * (1 - ratio);
+      // Keep the point under the cursor fixed (transform-origin is 0 0)
+      const cursorCanvasX = e.clientX - (gestureOriginRef.current.left + currentX);
+      const cursorCanvasY = e.clientY - (gestureOriginRef.current.top + currentY);
 
-      transformRef.current = { scale: nextScale, x: nextX, y: nextY };
-      canvas.style.transform = `translate(${nextX}px, ${nextY}px) scale(${nextScale})`;
-      setTransform({ scale: nextScale, x: nextX, y: nextY });
+      applyTransform({
+        scale: nextScale,
+        x: currentX + cursorCanvasX * (1 - ratio),
+        y: currentY + cursorCanvasY * (1 - ratio),
+      });
     };
 
     viewport.addEventListener('wheel', handleWheelNative, { passive: false });
     return () => {
       viewport.removeEventListener('wheel', handleWheelNative);
     };
-  }, [zoomable]);
+  }, [zoomable, applyTransform]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -313,99 +392,82 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     [zoomable],
   );
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isPanning.current) return;
-    const canvas = canvasRef.current;
-    const nextX = e.clientX - panStart.current.x;
-    const nextY = e.clientY - panStart.current.y;
-    transformRef.current.x = nextX;
-    transformRef.current.y = nextY;
-    if (canvas) {
-      canvas.style.transform = `translate(${nextX}px, ${nextY}px) scale(${transformRef.current.scale})`;
-    }
-    setTransform((prev) => ({ ...prev, x: nextX, y: nextY }));
-  }, []);
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!isPanning.current) return;
+      applyTransform({
+        scale: transformRef.current.scale,
+        x: e.clientX - panStart.current.x,
+        y: e.clientY - panStart.current.y,
+      });
+    },
+    [applyTransform],
+  );
 
   const handleMouseUp = useCallback(() => {
     isPanning.current = false;
   }, []);
 
-  const handleNavigate = useCallback((ratioX: number, ratioY: number) => {
-    const canvas = canvasRef.current;
-    const viewport = viewportRef.current;
-    if (!canvas || !viewport) return;
+  const handleNavigate = useCallback(
+    (ratioX: number, ratioY: number) => {
+      const canvas = canvasRef.current;
+      const viewport = viewportRef.current;
+      if (!canvas || !viewport) return;
 
-    const currentScale = transformRef.current.scale;
-    const vRect = viewport.getBoundingClientRect();
-    const cRect = canvas.getBoundingClientRect();
+      const { scale: currentScale, x: currentX, y: currentY } = transformRef.current;
+      const vRect = viewport.getBoundingClientRect();
+      const cRect = canvas.getBoundingClientRect();
 
-    const layoutLeft = (cRect.left - vRect.left) - transformRef.current.x;
-    const layoutTop = (cRect.top - vRect.top) - transformRef.current.y;
+      const layoutLeft = (cRect.left - vRect.left) - currentX;
+      const layoutTop = (cRect.top - vRect.top) - currentY;
 
-    const cWidth = canvas.offsetWidth;
-    const cHeight = canvas.offsetHeight;
-
-    const nextX = (vRect.width / 2) - layoutLeft - ratioX * cWidth * currentScale;
-    const nextY = (vRect.height / 2) - layoutTop - ratioY * cHeight * currentScale;
-
-    transformRef.current = { scale: currentScale, x: nextX, y: nextY };
-    canvas.style.transform = `translate(${nextX}px, ${nextY}px) scale(${currentScale})`;
-    setTransform({ scale: currentScale, x: nextX, y: nextY });
-  }, []);
+      applyTransform({
+        scale: currentScale,
+        x: (vRect.width / 2) - layoutLeft - ratioX * canvas.offsetWidth * currentScale,
+        y: (vRect.height / 2) - layoutTop - ratioY * canvas.offsetHeight * currentScale,
+      });
+    },
+    [applyTransform],
+  );
 
   const resetView = useCallback(() => {
-    transformRef.current = { scale: 1, x: 0, y: 0 };
-    setTransform({ scale: 1, x: 0, y: 0 });
-
     const canvas = canvasRef.current;
-    if (canvas) {
-      canvas.style.transition = 'transform 260ms cubic-bezier(0.16, 1, 0.3, 1)';
-      canvas.style.transform = zoomable ? 'translate(0px, 0px) scale(1)' : '';
-      setTimeout(() => {
-        if (canvas) canvas.style.transition = '';
-      }, 260);
+    if (zoomable) {
+      applyTransform(IDENTITY_TRANSFORM, true);
+    } else {
+      transformRef.current = IDENTITY_TRANSFORM;
+      setTransform(IDENTITY_TRANSFORM);
     }
 
     const viewport = viewportRef.current;
     if (viewport && canvas) {
-      const scrollX = Math.max(0, (canvas.scrollWidth - viewport.clientWidth) / 2);
-      const scrollY = Math.max(0, (canvas.scrollHeight - viewport.clientHeight) / 2);
       viewport.scrollTo({
-        left: scrollX,
-        top: scrollY,
+        left: Math.max(0, (canvas.scrollWidth - viewport.clientWidth) / 2),
+        top: Math.max(0, (canvas.scrollHeight - viewport.clientHeight) / 2),
         behavior: 'smooth',
       });
     }
-  }, [zoomable]);
+  }, [zoomable, applyTransform]);
 
   const scrollToNode = useCallback(
     (nodeId: string) => {
       const viewport = viewportRef.current;
-      const canvas = canvasRef.current;
       if (!viewport) return;
       const el = queryNode(viewport, nodeId);
       if (!el) return;
 
-      if (zoomable && canvas) {
+      if (zoomable && canvasRef.current) {
         const nodeRect = el.getBoundingClientRect();
         const vRect = viewport.getBoundingClientRect();
         const deltaX = (vRect.left + vRect.width / 2) - (nodeRect.left + nodeRect.width / 2);
         const deltaY = (vRect.top + vRect.height / 2) - (nodeRect.top + nodeRect.height / 2);
-        const nextX = transformRef.current.x + deltaX;
-        const nextY = transformRef.current.y + deltaY;
-        transformRef.current.x = nextX;
-        transformRef.current.y = nextY;
-        canvas.style.transition = 'transform 260ms cubic-bezier(0.16, 1, 0.3, 1)';
-        canvas.style.transform = `translate(${nextX}px, ${nextY}px) scale(${transformRef.current.scale})`;
-        setTransform((prev) => ({ ...prev, x: nextX, y: nextY }));
-        setTimeout(() => {
-          if (canvas) canvas.style.transition = '';
-        }, 260);
+        const current = transformRef.current;
+        applyTransform({ scale: current.scale, x: current.x + deltaX, y: current.y + deltaY }, true);
       } else {
         el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
       }
     },
-    [zoomable],
+    [zoomable, applyTransform],
   );
 
   const selectNode = useCallback(
@@ -511,9 +573,9 @@ function TreeCraftInternal<T = Record<string, unknown>>(
     className,
   ].filter(Boolean).join(' ');
 
+  // `transform` itself is applied imperatively (see applyTransform), never by React
   const innerStyle: React.CSSProperties = zoomable
     ? {
-      transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
       transformOrigin: '0 0',
       cursor: isPanning.current ? 'grabbing' : 'grab',
     }

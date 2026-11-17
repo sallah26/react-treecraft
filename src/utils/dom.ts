@@ -32,3 +32,9 @@ export function queryNode(root: ParentNode | null | undefined, nodeId: string): 
  */
 export const useIsomorphicLayoutEffect =
   typeof window !== 'undefined' && typeof document !== 'undefined' ? useLayoutEffect : useEffect;
+
+/**
+ * Fired on the TreeCraft viewport element (at most once per animation frame) whenever the
+ * zoom/pan transform changes. Lets the MiniMap follow along without a React render per frame.
+ */
+export const TRANSFORM_EVENT = 'tc-transformchange';
