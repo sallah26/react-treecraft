@@ -59,6 +59,12 @@
   margin: 0 auto;
 }
 
+/* During zoom/pan gestures: nodes moving under a still cursor would otherwise flip :hover
+   states (and their transitions) every frame, which shows as jitter. Restored on settle. */
+.tc-root--interacting .tc-canvas {
+  pointer-events: none;
+}
+
 .tc-root--horizontal .tc-canvas {
   flex-direction: row;
   min-height: 100%;
@@ -761,6 +767,22 @@
 
 .tc-minimap__canvas {
   display: block;
+  position: relative;
+  z-index: 1; /* nodes draw over the viewport lens */
+}
+
+/* Viewport indicator; positioned imperatively by MiniMap.tsx (colours injected inline) */
+.tc-minimap__lens {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  box-sizing: border-box;
+  border: 1px solid;
+  border-radius: 2px;
+  pointer-events: none;
+  will-change: transform;
 }
 
 .tc-minimap__tooltip {

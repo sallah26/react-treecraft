@@ -5,7 +5,7 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import type { TreeNode, MiniMapPosition, MiniMapProps } from '../types';
 import { toArray } from '../utils/tree-helpers';
 import { normalizeColorString, parseColorToRgba, colorWithAlpha, isLightBackground } from '../utils/color-helpers';
-import { queryNode } from '../utils/dom';
+import { queryNode, TRANSFORM_EVENT } from '../utils/dom';
 import { useThemeVersion } from '../hooks/useThemeVersion';
 
 //  Re-export so consumers can import MiniMapProps from the component file too 
@@ -24,6 +24,13 @@ interface LayoutItem<T> {
   childrenIds: string[];
   isRoot: boolean;
   isLeaf: boolean;
+}
+
+interface ViewportBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 const CANVAS_WIDTH = 180;
@@ -104,7 +111,10 @@ export function MiniMap<T = Record<string, unknown>>({
   const rootRef = useRef<HTMLDivElement>(null);
   const [minimized, setMinimized] = useState(false);
   const [hoveredNode, setHoveredNode] = useState<{ label: string; x: number; y: number } | null>(null);
-  const [viewportBox, setViewportBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  // The viewport box is a DOM overlay positioned imperatively: moving it never re-renders the
+  // MiniMap or repaints the canvas (it used to be drawn into the canvas on every zoom frame).
+  const lensRef = useRef<HTMLDivElement | null>(null); // mutable: assigned in a callback ref
+  const lensBoxRef = useRef<ViewportBox | null>(null);
   const isDraggingRadar = useRef(false);
 
   const dataArr = useMemo(() => toArray(data), [data]);
@@ -222,12 +232,39 @@ export function MiniMap<T = Record<string, unknown>>({
   }, [resolvedBg, resolvedBorder]);
 
   //  Track Container Scroll & Viewport ─
+  const writeLens = useCallback((box: ViewportBox | null) => {
+    const prev = lensBoxRef.current;
+    if (
+      box && prev &&
+      Math.abs(prev.x - box.x) < 0.002 && Math.abs(prev.y - box.y) < 0.002 &&
+      Math.abs(prev.w - box.w) < 0.002 && Math.abs(prev.h - box.h) < 0.002
+    ) {
+      return;
+    }
+    lensBoxRef.current = box;
+    const lens = lensRef.current;
+    if (!lens) return;
+    if (!box) {
+      lens.style.display = 'none';
+      return;
+    }
+    const w = Math.max(14, box.w * CANVAS_WIDTH);
+    const h = Math.max(14, box.h * CANVAS_HEIGHT);
+    lens.style.display = 'block';
+    lens.style.width = `${w}px`;
+    lens.style.height = `${h}px`;
+    lens.style.transform = `translate(${box.x * CANVAS_WIDTH}px, ${box.y * CANVAS_HEIGHT}px)`;
+  }, []);
+
+  const isTransformMode = scale !== undefined && tx !== undefined && ty !== undefined;
+  const updateViewportRef = useRef<() => void>(() => {});
+
   useEffect(() => {
     const container = containerRef?.current;
     if (!container) return;
 
     const updateViewport = () => {
-      if (scale !== undefined && tx !== undefined && ty !== undefined) {
+      if (isTransformMode) {
         // Zoom/Pan mode: compute viewport radar box from canvas bounds
         const canvasEl = container.querySelector('.tc-canvas') as HTMLElement | null;
         if (!canvasEl) return;
@@ -246,47 +283,26 @@ export function MiniMap<T = Record<string, unknown>>({
         const x = Math.min(1 - w, Math.max(0, leftOffset / cRect.width));
         const y = Math.min(1 - h, Math.max(0, topOffset / cRect.height));
 
-        setViewportBox((prev) => {
-          if (
-            prev &&
-            Math.abs(prev.x - x) < 0.002 &&
-            Math.abs(prev.y - y) < 0.002 &&
-            Math.abs(prev.w - w) < 0.002 &&
-            Math.abs(prev.h - h) < 0.002
-          ) {
-            return prev;
-          }
-          return { x, y, w, h };
-        });
+        writeLens({ x, y, w, h });
         return;
       }
 
       // Standard scroll mode
       const { scrollLeft, scrollTop, scrollWidth, scrollHeight, clientWidth, clientHeight } = container;
       if (scrollWidth <= clientWidth + 2 && scrollHeight <= clientHeight + 2) {
-        setViewportBox((prev) => (prev === null ? null : null));
+        writeLens(null);
         return;
       }
       const w = scrollWidth > 0 ? Math.min(1, clientWidth / scrollWidth) : 1;
       const h = scrollHeight > 0 ? Math.min(1, clientHeight / scrollHeight) : 1;
       const x = scrollWidth > 0 ? Math.min(1 - w, Math.max(0, scrollLeft / scrollWidth)) : 0;
       const y = scrollHeight > 0 ? Math.min(1 - h, Math.max(0, scrollTop / scrollHeight)) : 0;
-      setViewportBox((prev) => {
-        if (
-          prev &&
-          Math.abs(prev.x - x) < 0.002 &&
-          Math.abs(prev.y - y) < 0.002 &&
-          Math.abs(prev.w - w) < 0.002 &&
-          Math.abs(prev.h - h) < 0.002
-        ) {
-          return prev;
-        }
-        return { x, y, w, h };
-      });
+      writeLens({ x, y, w, h });
     };
 
     updateViewport();
     container.addEventListener('scroll', updateViewport, { passive: true });
+    container.addEventListener(TRANSFORM_EVENT, updateViewport);
     window.addEventListener('resize', updateViewport);
 
     let resizeObserver: ResizeObserver | null = null;
@@ -295,12 +311,25 @@ export function MiniMap<T = Record<string, unknown>>({
       resizeObserver.observe(container);
     }
 
-    return () => {
+    const teardown = () => {
       container.removeEventListener('scroll', updateViewport);
+      container.removeEventListener(TRANSFORM_EVENT, updateViewport);
       window.removeEventListener('resize', updateViewport);
       resizeObserver?.disconnect();
     };
-  }, [containerRef, scale, tx, ty]);
+    updateViewportRef.current = updateViewport;
+    return () => {
+      updateViewportRef.current = () => {};
+      teardown();
+    };
+  }, [containerRef, isTransformMode, writeLens]);
+
+  // Zoom/pan changes only recompute the viewport box; listeners above stay attached
+  // (previously every zoom step tore down and re-created them, plus a fresh ResizeObserver
+  // that fired immediately — an extra render and canvas redraw per wheel event)
+  useEffect(() => {
+    updateViewportRef.current();
+  }, [scale, tx, ty]);
 
   //  Calculate Hierarchical Coordinates 
   const { layoutNodes, totalNodes } = useMemo(() => {
@@ -398,29 +427,20 @@ export function MiniMap<T = Record<string, unknown>>({
     if (!ctx) return;
 
     const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 2 : 2;
-    canvas.width = CANVAS_WIDTH * dpr;
-    canvas.height = CANVAS_HEIGHT * dpr;
-    canvas.style.width = `${CANVAS_WIDTH}px`;
-    canvas.style.height = `${CANVAS_HEIGHT}px`;
+    // Reassigning canvas.width reallocates and clears the bitmap; only do it when it changes
+    const pixelW = Math.round(CANVAS_WIDTH * dpr);
+    const pixelH = Math.round(CANVAS_HEIGHT * dpr);
+    if (canvas.width !== pixelW || canvas.height !== pixelH) {
+      canvas.width = pixelW;
+      canvas.height = pixelH;
+      canvas.style.width = `${CANVAS_WIDTH}px`;
+      canvas.style.height = `${CANVAS_HEIGHT}px`;
+    }
 
     ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-    //  0. Viewport Indicator Lens 
-    if (viewportBox) {
-      const vx = viewportBox.x * CANVAS_WIDTH;
-      const vy = viewportBox.y * CANVAS_HEIGHT;
-      const vw = Math.max(14, viewportBox.w * CANVAS_WIDTH);
-      const vh = Math.max(14, viewportBox.h * CANVAS_HEIGHT);
-
-      ctx.fillStyle = palette.primaryGlow12;
-      ctx.fillRect(vx, vy, vw, vh);
-
-      ctx.strokeStyle = palette.primaryGlow50;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(vx + 0.5, vy + 0.5, vw - 1, vh - 1);
-    }
 
     const nodeMap = new Map<string, LayoutItem<T>>();
     layoutNodes.forEach((n) => nodeMap.set(n.id, n));
@@ -534,7 +554,7 @@ export function MiniMap<T = Record<string, unknown>>({
     });
 
     ctx.restore();
-  }, [layoutNodes, focusedNodeId, highlightPathIds, selectedIds, orientation, minimized, viewportBox, palette]);
+  }, [layoutNodes, focusedNodeId, highlightPathIds, selectedIds, orientation, minimized, palette]);
 
   //  Panning & Navigation 
   const panToCanvasCoords = useCallback((mouseX: number, mouseY: number, smooth = true) => {
@@ -700,6 +720,19 @@ export function MiniMap<T = Record<string, unknown>>({
 
       {!minimized && (
         <div className="tc-minimap__canvas-container" style={canvasContainerStyle}>
+          <div
+            ref={(el) => {
+              lensRef.current = el;
+              // Re-apply the last known box when the panel is re-shown after minimizing
+              if (el && lensBoxRef.current) {
+                const box = lensBoxRef.current;
+                lensBoxRef.current = null;
+                writeLens(box);
+              }
+            }}
+            className="tc-minimap__lens"
+            style={{ background: palette.primaryGlow12, borderColor: palette.primaryGlow50 }}
+          />
           <canvas
             ref={canvasRef}
             className="tc-minimap__canvas"
